@@ -13,3 +13,4 @@ export {
   GhTimeoutError,
   type GhError,
 } from "./errors.js";
+export * as Api from "./api.js";

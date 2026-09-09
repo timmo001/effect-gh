@@ -64,6 +64,49 @@ platform terminates the child, escalating after one second if needed. An early
 consumer stop does not validate the final exit code. Interruptions remain Effect
 interruptions rather than being converted into SDK errors.
 
+## API requests
+
+`Api.raw(request)` returns buffered output, including empty or non-JSON responses.
+`Api.json(request, schema)` decodes one JSON response. Every request specifies a
+method, which the SDK passes explicitly to `gh api`.
+
+```ts
+import { Api } from "@timmo001/effect-gh";
+import { Schema } from "effect";
+
+const viewer = Api.json(
+  { endpoint: "user", method: "GET" },
+  Schema.Struct({ login: Schema.String }),
+);
+
+const subscription = Api.raw({
+  endpoint: "notifications/threads/123/subscription",
+  method: "PUT",
+  body: { ignored: true },
+});
+```
+
+Requests accept `hostname`, `headers`, `query`, a JSON `body`, and core overrides
+under `options`. Query values are URL-encoded; arrays repeat the key. JSON bodies
+go through stdin rather than CLI field interpolation. Bodyless calls clear any
+layer-level stdin.
+
+`Api.pages(request, pageSchema)` runs a bodyless REST GET with
+`--paginate --slurp`. The result is an array of decoded **pages**, not flattened
+items: use an array schema for array endpoints, or an object schema for envelopes
+such as `{ workflow_runs: [...] }`. It buffers all pages and does not provide a
+snapshot-consistency guarantee. GraphQL cursor pagination remains available
+through the raw `Gh` interface.
+
+### Retries
+
+No SDK operation retries automatically. Mutations can have taken effect even
+when the CLI times out or loses the connection. Consumers can apply Effect
+`Schedule` and `Effect.retry` to known-idempotent reads with a bounded policy and
+their own transient-error classification. Decode errors, authentication failures
+and check-status exits are not transient errors. Do not transparently replay a
+stream after it has emitted output.
+
 ## Development
 
 Use the tool versions pinned in `mise.toml` and Bun for dependencies.
@@ -80,10 +123,10 @@ mise run build
 - [x] Add scoped `gh` subprocess execution with explicit working directory,
       arguments, environment, cancellation and timeouts.
 - [x] Reuse `gh` authentication and decode JSON responses with Effect Schema.
-- [ ] Wrap `gh api`, including pagination and explicit request methods.
+- [x] Wrap `gh api`, including pagination and explicit request methods.
 - [ ] Add repository, pull request, issue and workflow operations needed by consumers.
 - [ ] Define streaming output and watch operations.
-- [ ] Define retry behaviour without replaying unsafe mutations.
+- [x] Define retry behaviour without replaying unsafe mutations.
 - [ ] Add focused contract tests and usage examples.
 - [ ] Verify compatibility with dotfiles and Herdr Workflow Watch.
 - [ ] Prepare package exports, releases and publication.
