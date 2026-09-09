@@ -1,7 +1,6 @@
 # effect-gh
 
-Effect v4 SDK for the GitHub CLI. This repository currently contains the scaffold;
-the README tracks implementation work.
+Effect v4 SDK for the GitHub CLI. The README tracks implementation work.
 
 ## Tooling
 

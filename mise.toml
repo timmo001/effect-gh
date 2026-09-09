@@ -25,8 +25,12 @@ description = "Check formatting without writing"
 run = "bun run format:check"
 
 [tasks.check]
-description = "Lint, type-check and verify formatting"
-depends = ["lint", "typecheck", "format:check"]
+description = "Lint, type-check, test and verify formatting"
+depends = ["lint", "typecheck", "test", "format:check"]
+
+[tasks.test]
+description = "Run SDK contract tests"
+run = "bun run test"
 
 [tasks.build]
 description = "Build ESM and TypeScript declarations into dist"
