@@ -15,6 +15,14 @@ and [dotfiles](https://github.com/timmo001/dotfiles).
 - An ESM consumer. The package exports JavaScript and TypeScript declarations
   from its root; the platform adapter stays a consumer dependency.
 
+## Agent skill
+
+[The effect-gh skill](https://github.com/timmo001/effect-gh/blob/main/skills/effect-gh/SKILL.md)
+guides Effect integrations towards the package and its current documentation.
+It follows the [Agent Skills specification](https://agentskills.io/specification).
+Import the complete `skills/effect-gh/` directory unchanged into your skill
+collection; it has no client-specific configuration or local path dependencies.
+
 ## Core SDK
 
 `Gh` is the service tag. `layer(options?)` captures the consumer-provided
