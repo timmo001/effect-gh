@@ -124,6 +124,28 @@ options as their final argument. Lists default to 30 open issues, and support
 state, limit, labels, assignee and search filters. `Issue.view` includes the body.
 Invalid numeric limits and selectors fail with `IssueInvalidInput` before spawning.
 
+## Pull requests
+
+```ts
+import { PullRequest } from "@timmo001/effect-gh";
+
+const pullRequests = PullRequest.list({ repository: "owner/repo" });
+const pullRequest = PullRequest.view(42, { repository: "owner/repo" });
+const checks = PullRequest.checks(42, {
+  repository: "owner/repo",
+  required: true,
+});
+```
+
+Pull request options require `repository` and accept core execution overrides.
+Lists default to 30 open PRs, with optional state, limit, base and head filters.
+List/view return number, title, URL, state, draft status, head branch and head SHA.
+
+`PullRequest.checks` returns `{ checks, status, exitCode }`. Valid check output
+from exits 0, 1 and 8 is data with status `success`, `failure` or `pending`.
+Genuine command failures retain their typed error; no command is re-executed to
+retrieve its output.
+
 ## Development
 
 Use the tool versions pinned in `mise.toml` and Bun for dependencies.
