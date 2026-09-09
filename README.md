@@ -3,9 +3,7 @@
 An Effect v4 SDK for the GitHub CLI (`gh`).
 
 Inspired by the Effect-native API in
-[dmmulroy/herdr-ts-sdk](https://github.com/dmmulroy/herdr-ts-sdk), with tooling
-based on [herdr-workflow-watch](https://github.com/timmo001/herdr-workflow-watch)
-and [dotfiles](https://github.com/timmo001/dotfiles).
+[dmmulroy/herdr-ts-sdk](https://github.com/dmmulroy/herdr-ts-sdk).
 
 ## Requirements
 
@@ -14,6 +12,44 @@ and [dotfiles](https://github.com/timmo001/dotfiles).
   token environment variables. CLI contracts are tested against gh `2.100.0`.
 - An ESM consumer. The package exports JavaScript and TypeScript declarations
   from its root; the platform adapter stays a consumer dependency.
+
+## Install
+
+The first npm publication is pending. Build a package from source with the
+[mise](https://mise.jdx.dev/getting-started.html)-pinned tools:
+
+```sh
+git clone https://github.com/timmo001/effect-gh.git
+cd effect-gh
+mise install
+mise run install
+mise exec -- npm pack --pack-destination ..
+```
+
+From your application, install the resulting archive and matching Effect
+dependencies. This example uses the Node platform adapter:
+
+```sh
+bun add /path/to/timmo001-effect-gh-0.1.0.tgz \
+  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
+```
+
+After the first publication, install directly from npm:
+
+```sh
+bun add @timmo001/effect-gh \
+  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
+```
+
+Install [GitHub CLI](https://cli.github.com/) separately, then authenticate:
+
+```sh
+gh auth login
+gh auth status
+```
+
+For automation, supply `GH_TOKEN` or another gh-supported authentication
+configuration through the environment. The SDK uses it without a separate login.
 
 ## Agent skill
 
@@ -220,8 +256,8 @@ mise run build
 
 ## Releases
 
-Version `0.1.0` is prepared for its first npm publication. To inspect the package
-locally, run `mise exec -- npm pack --dry-run`; the pack hook builds `dist/`.
+To inspect the package locally, run `mise exec -- npm pack --dry-run`; the pack
+hook builds `dist/`.
 The package includes only the ESM build, declarations, README, licence and package
 metadata.
 
@@ -236,17 +272,3 @@ For a release, set the package version, keep `bun.lock` in sync, and pass
 publish a GitHub release with a tag matching the version exactly, such as `0.1.0`.
 The publisher verifies the tag against the package version, validates and builds
 the package, then publishes to npm with provenance.
-
-## Implementation checklist
-
-- [x] Define the SDK service, layers and typed errors.
-- [x] Add scoped `gh` subprocess execution with explicit working directory,
-      arguments, environment, cancellation and timeouts.
-- [x] Reuse `gh` authentication and decode JSON responses with Effect Schema.
-- [x] Wrap `gh api`, including pagination and explicit request methods.
-- [x] Add repository, pull request, issue and workflow operations needed by consumers.
-- [x] Define streaming output and watch operations.
-- [x] Define retry behaviour without replaying unsafe mutations.
-- [x] Add focused contract tests and usage examples.
-- [x] Verify compatibility with dotfiles and Herdr Workflow Watch contracts.
-- [x] Prepare package exports, releases and publication.

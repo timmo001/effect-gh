@@ -1,6 +1,6 @@
 # effect-gh
 
-Effect v4 SDK for the GitHub CLI. The README tracks implementation work.
+Effect v4 SDK for the GitHub CLI. The README documents usage and development.
 
 ## Tooling
 
