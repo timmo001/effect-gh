@@ -1,10 +1,28 @@
 {
   "name": "@timmo001/effect-gh",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "An Effect v4 SDK for the GitHub CLI",
   "license": "Apache-2.0",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "packageManager": "bun@1.4.2",
   "repository": {
     "type": "git",
@@ -12,12 +30,14 @@
   },
   "scripts": {
     "build": "tsc",
+    "check": "bun run lint && bun run typecheck && bun run format:check && bun run test",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "bun test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepare": "effect-tsgo patch"
+    "prepare": "effect-tsgo patch",
+    "prepack": "bun run build"
   },
   "peerDependencies": {
     "effect": "4.0.0-rc.112"

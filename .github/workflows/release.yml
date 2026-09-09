@@ -1,0 +1,40 @@
+---
+name: Release
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  tools:
+    name: Resolve release tools
+    runs-on: ubuntu-latest
+    outputs:
+      bun: ${{ steps.versions.outputs.bun }}
+      node: ${{ steps.versions.outputs.node }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up mise
+        uses: jdx/mise-action@5ac50f778e26fac95da98d50503682459e86d566
+
+      - name: Read tool versions
+        id: versions
+        run: |
+          printf 'bun=%s\n' "$(mise current bun)" >> "$GITHUB_OUTPUT"
+          printf 'node=%s\n' "$(mise current node)" >> "$GITHUB_OUTPUT"
+
+  npm:
+    needs: tools
+    permissions:
+      contents: read
+      id-token: write
+    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@722ef29d1740604bd16be91fde520339d2cfadbb # master
+    with:
+      bun-version: ${{ needs.tools.outputs.bun }}
+      node-version: ${{ needs.tools.outputs.node }}

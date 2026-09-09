@@ -7,6 +7,14 @@ Inspired by the Effect-native API in
 based on [herdr-workflow-watch](https://github.com/timmo001/herdr-workflow-watch)
 and [dotfiles](https://github.com/timmo001/dotfiles).
 
+## Requirements
+
+- Effect `4.0.0-rc.112`, with a matching consumer-chosen platform adapter.
+- GitHub CLI installed and authenticated through `gh auth login` or its standard
+  token environment variables. CLI contracts are tested against gh `2.100.0`.
+- An ESM consumer. The package exports JavaScript and TypeScript declarations
+  from its root; the platform adapter stays a consumer dependency.
+
 ## Core SDK
 
 `Gh` is the service tag. `layer(options?)` captures the consumer-provided
@@ -178,6 +186,20 @@ gh version with `--compact` support; gh watch does not support fine-grained PATs
 Use REST page schemas through `Api` when a consumer needs snake_case fields,
 page envelopes or attempt-specific jobs.
 
+## Consumer examples
+
+- [Notifications](https://github.com/timmo001/effect-gh/blob/main/examples/notifications.ts): nullable notification fields,
+  single-page counts, mark-read/done and subscription requests with empty
+  responses, plus consumer-side NodeServices composition.
+- [Workflow runs](https://github.com/timmo001/effect-gh/blob/main/examples/workflow-runs.ts): REST page envelopes, branch and SHA
+  filtering, retained run attempts, attempt-specific jobs and failed logs.
+
+These examples are typechecked and tested against fixtures matching the dotfiles
+and Herdr Workflow Watch contracts. They preserve the data needed by those
+consumers; filtering policy, reconciliation, completeness checks and runtime
+ownership stay with the application. They are migration references, not drop-in
+replacements for either existing service.
+
 ## Development
 
 Use the tool versions pinned in `mise.toml` and Bun for dependencies.
@@ -188,7 +210,26 @@ mise run check
 mise run build
 ```
 
-## TODO
+## Releases
+
+Version `0.1.0` is prepared for its first npm publication. To inspect the package
+locally, run `mise exec -- npm pack --dry-run`; the pack hook builds `dist/`.
+The package includes only the ESM build, declarations, README, licence and package
+metadata.
+
+Before the first automated publication, configure npm trusted publishing for
+`timmo001/effect-gh` and workflow filename `release.yml`. An initial package
+publication may be needed before that configuration is available. The release
+workflow uses the shared npm publisher and resolves Bun and Node versions from
+`mise.toml` through mise.
+
+For a release, set the package version, keep `bun.lock` in sync, and pass
+`mise run check` and `mise run build`. Commit and push the reviewed version, then
+publish a GitHub release with a tag matching the version exactly, such as `0.1.0`.
+The publisher verifies the tag against the package version, validates and builds
+the package, then publishes to npm with provenance.
+
+## Implementation checklist
 
 - [x] Define the SDK service, layers and typed errors.
 - [x] Add scoped `gh` subprocess execution with explicit working directory,
@@ -198,6 +239,6 @@ mise run build
 - [x] Add repository, pull request, issue and workflow operations needed by consumers.
 - [x] Define streaming output and watch operations.
 - [x] Define retry behaviour without replaying unsafe mutations.
-- [ ] Add focused contract tests and usage examples.
-- [ ] Verify compatibility with dotfiles and Herdr Workflow Watch.
-- [ ] Prepare package exports, releases and publication.
+- [x] Add focused contract tests and usage examples.
+- [x] Verify compatibility with dotfiles and Herdr Workflow Watch contracts.
+- [x] Prepare package exports, releases and publication.
