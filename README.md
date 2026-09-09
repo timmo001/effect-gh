@@ -10,12 +10,29 @@ Inspired by the Effect-native API in
 - Effect `4.0.0-rc.112`, with a matching consumer-chosen platform adapter.
 - GitHub CLI installed and authenticated through `gh auth login` or its standard
   token environment variables. CLI contracts are tested against gh `2.100.0`.
-- An ESM consumer. The package exports JavaScript and TypeScript declarations
-  from its root; the platform adapter stays a consumer dependency.
+- An ESM consumer. Bun runs the TypeScript source directly; Node uses the compiled
+  JavaScript in a built package. The platform adapter stays a consumer dependency.
 
 ## Install
 
-The first npm publication is pending. Build a package from source with the
+### Bun
+
+Install from GitHub, pinned to a full commit SHA containing the native Bun exports.
+Replace `<commit-sha>` with the revision you want to use:
+
+```sh
+bun add '@timmo001/effect-gh@github:timmo001/effect-gh#<commit-sha>' \
+  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
+```
+
+Commit `package.json` and `bun.lock` in your application. The `bun` export resolves
+to `src/index.ts`, and types resolve to the same source. GitHub installs need no
+build step or consumer patch. This example uses the Node platform adapter, which
+also works in Bun.
+
+### Node
+
+Build a package from source with the
 [mise](https://mise.jdx.dev/getting-started.html)-pinned tools:
 
 ```sh
@@ -34,12 +51,15 @@ bun add /path/to/timmo001-effect-gh-0.1.0.tgz \
   effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
 ```
 
-After the first publication, install directly from npm:
+The first npm publication is pending. After publication, either runtime can
+install directly from npm:
 
 ```sh
 bun add @timmo001/effect-gh \
   effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
 ```
+
+### GitHub authentication
 
 Install [GitHub CLI](https://cli.github.com/) separately, then authenticate:
 

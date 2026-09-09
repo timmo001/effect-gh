@@ -5,15 +5,17 @@
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
+      "bun": "./src/index.ts",
       "import": "./dist/index.js"
     },
     "./package.json": "./package.json"
   },
   "files": [
+    "src",
     "dist",
     "README.md",
     "LICENSE"
