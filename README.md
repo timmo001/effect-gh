@@ -30,7 +30,3 @@ mise run build
 - [ ] Add focused contract tests and usage examples.
 - [ ] Verify compatibility with dotfiles and Herdr Workflow Watch.
 - [ ] Prepare package exports, releases and publication.
-
-## Licence
-
-[Apache-2.0](LICENSE).
