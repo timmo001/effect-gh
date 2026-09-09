@@ -17,3 +17,4 @@ export * as Api from "./api.js";
 export * as Repository from "./repository.js";
 export * as Issue from "./issue.js";
 export * as PullRequest from "./pull-request.js";
+export * as Workflow from "./workflow.js";

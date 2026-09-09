@@ -146,6 +146,38 @@ from exits 0, 1 and 8 is data with status `success`, `failure` or `pending`.
 Genuine command failures retain their typed error; no command is re-executed to
 retrieve its output.
 
+## Workflow runs
+
+```ts
+import { Workflow } from "@timmo001/effect-gh";
+
+const runs = Workflow.list({ repo: "owner/repo", branch: "main", limit: 20 });
+const run = Workflow.view({ repo: "owner/repo", runId: 123, attempt: 2 });
+const logs = Workflow.logs({
+  repo: "owner/repo",
+  runId: 123,
+  attempt: 2,
+  failedOnly: true,
+});
+const progress = Workflow.watch(
+  { repo: "owner/repo", runId: 123, interval: 3 },
+  { timeout: null },
+);
+```
+
+Workflow operations require `repo` and accept core options as a final argument.
+Lists default to at most 20 runs, with branch, commit, workflow and status filters.
+Run data uses gh's camelCase JSON fields, including `databaseId` and `attempt`.
+Log retrieval supports an explicit attempt and job, and returns buffered text.
+Invalid selectors and numeric options fail with `WorkflowInvalidOptions`.
+
+`Workflow.watch` emits core stdout/stderr chunks using
+`gh run watch --compact --exit-status`. It defaults to a three-second refresh
+interval, fails when the run fails and inherits the core timeout. It requires a
+gh version with `--compact` support; gh watch does not support fine-grained PATs.
+Use REST page schemas through `Api` when a consumer needs snake_case fields,
+page envelopes or attempt-specific jobs.
+
 ## Development
 
 Use the tool versions pinned in `mise.toml` and Bun for dependencies.
@@ -163,8 +195,8 @@ mise run build
       arguments, environment, cancellation and timeouts.
 - [x] Reuse `gh` authentication and decode JSON responses with Effect Schema.
 - [x] Wrap `gh api`, including pagination and explicit request methods.
-- [ ] Add repository, pull request, issue and workflow operations needed by consumers.
-- [ ] Define streaming output and watch operations.
+- [x] Add repository, pull request, issue and workflow operations needed by consumers.
+- [x] Define streaming output and watch operations.
 - [x] Define retry behaviour without replaying unsafe mutations.
 - [ ] Add focused contract tests and usage examples.
 - [ ] Verify compatibility with dotfiles and Herdr Workflow Watch.
