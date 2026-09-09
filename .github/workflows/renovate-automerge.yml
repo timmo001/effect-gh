@@ -1,0 +1,12 @@
+---
+name: Renovate automerge
+
+on:
+  pull_request_target: {}
+
+jobs:
+  automerge:
+    uses: timmo001/workflows/.github/workflows/renovate-automerge.yml@722ef29d1740604bd16be91fde520339d2cfadbb # master
+    permissions:
+      pull-requests: write
+      contents: write
