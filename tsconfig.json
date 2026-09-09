@@ -5,6 +5,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "declaration": true,
     "rootDir": "src",

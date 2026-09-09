@@ -20,7 +20,8 @@ export interface GhOptions {
   readonly executable?: string;
   readonly cwd?: string;
   readonly env?: Readonly<Record<string, string | undefined>>;
-  readonly stdin?: string | Uint8Array;
+  /** Explicit undefined clears stdin inherited from the layer. */
+  readonly stdin?: string | Uint8Array | undefined;
   /** Total subprocess duration, including output draining. Null disables a layer timeout. */
   readonly timeout?: Duration.Input | null;
 }
