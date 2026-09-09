@@ -107,6 +107,23 @@ their own transient-error classification. Decode errors, authentication failures
 and check-status exits are not transient errors. Do not transparently replay a
 stream after it has emitted output.
 
+## Repository and issues
+
+```ts
+import { Issue, Repository } from "@timmo001/effect-gh";
+
+const repository = Repository.view("owner/repo");
+const issues = Issue.list({ repo: "owner/repo", state: "open", limit: 50 });
+const issue = Issue.view(42, { repo: "owner/repo" });
+```
+
+`Repository.view(repo?, options?)` returns the repository name, URL, privacy and
+nullable default branch. Omitting the selector uses gh's working-directory
+context. Issue list/view also accept an optional `repo`, plus core execution
+options as their final argument. Lists default to 30 open issues, and support
+state, limit, labels, assignee and search filters. `Issue.view` includes the body.
+Invalid numeric limits and selectors fail with `IssueInvalidInput` before spawning.
+
 ## Development
 
 Use the tool versions pinned in `mise.toml` and Bun for dependencies.
