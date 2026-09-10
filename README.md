@@ -7,56 +7,61 @@ Inspired by the Effect-native API in
 
 ## Requirements
 
-- Effect `4.0.0-rc.112`, with a matching consumer-chosen platform adapter.
+- Effect matching `peerDependencies.effect` in [package.json](package.json), with
+  a compatible consumer-chosen platform adapter.
 - GitHub CLI installed and authenticated through `gh auth login` or its standard
-  token environment variables. CLI contracts are tested against gh `2.100.0`.
+  token environment variables.
 - An ESM consumer. Bun runs the TypeScript source directly; Node uses the compiled
   JavaScript in a built package. The platform adapter stays a consumer dependency.
 
 ## Install
 
+The commands below read Effect and Node adapter versions from the installed SDK's
+`package.json`. The Node adapter also works in Bun.
+
 ### Bun
 
-Install from GitHub, pinned to a full commit SHA containing the native Bun exports.
-Replace `<commit-sha>` with the revision you want to use:
+Run from your application directory:
 
 ```sh
-bun add '@timmo001/effect-gh@github:timmo001/effect-gh#<commit-sha>' \
-  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
+bun add github:timmo001/effect-gh
+bun add "effect@$(bun -p 'require("@timmo001/effect-gh/package.json").peerDependencies.effect')" \
+  "@effect/platform-node@$(bun -p 'require("@timmo001/effect-gh/package.json").devDependencies["@effect/platform-node"]')"
 ```
 
-Commit `package.json` and `bun.lock` in your application. The `bun` export resolves
-to `src/index.ts`, and types resolve to the same source. GitHub installs need no
-build step or consumer patch. This example uses the Node platform adapter, which
-also works in Bun.
+Commit `package.json` and `bun.lock` in your application to preserve the resolved
+GitHub revision and dependency versions. The `bun` export resolves to
+`src/index.ts`, and types resolve to the same source. GitHub installs need no
+build step or consumer patch.
 
 ### Node
 
-Build a package from source with the
-[mise](https://mise.jdx.dev/getting-started.html)-pinned tools:
+Run from your application directory to build and install a package from source
+with the [mise](https://mise.jdx.dev/getting-started.html)-pinned tools:
 
 ```sh
-git clone https://github.com/timmo001/effect-gh.git
-cd effect-gh
-mise install
-mise run install
-mise exec -- npm pack --pack-destination ..
+git clone https://github.com/timmo001/effect-gh.git .effect-gh
+(
+  cd .effect-gh &&
+    mise install &&
+    mise run install &&
+    mise exec -- npm pack --pack-destination ..
+)
+bun add ./timmo001-effect-gh-*.tgz
+bun add "effect@$(bun -p 'require("@timmo001/effect-gh/package.json").peerDependencies.effect')" \
+  "@effect/platform-node@$(bun -p 'require("@timmo001/effect-gh/package.json").devDependencies["@effect/platform-node"]')"
 ```
 
-From your application, install the resulting archive and matching Effect
-dependencies. This example uses the Node platform adapter:
-
-```sh
-bun add /path/to/timmo001-effect-gh-0.1.0.tgz \
-  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
-```
+Keep the archive with your application for repeatable installs. The `.effect-gh`
+checkout is only needed to build it.
 
 The first npm publication is pending. After publication, either runtime can
 install directly from npm:
 
 ```sh
-bun add @timmo001/effect-gh \
-  effect@4.0.0-rc.112 @effect/platform-node@4.0.0-rc.112
+bun add @timmo001/effect-gh
+bun add "effect@$(bun -p 'require("@timmo001/effect-gh/package.json").peerDependencies.effect')" \
+  "@effect/platform-node@$(bun -p 'require("@timmo001/effect-gh/package.json").devDependencies["@effect/platform-node"]')"
 ```
 
 ### GitHub authentication
@@ -266,7 +271,7 @@ replacements for either existing service.
 
 ## Development
 
-Use the tool versions pinned in `mise.toml` and Bun for dependencies.
+Use the tool versions pinned in [mise.toml](mise.toml) and Bun for dependencies.
 
 ```sh
 mise run install
