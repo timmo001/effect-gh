@@ -304,7 +304,7 @@ test("json and pages preserve schema decoding service requirements", async () =>
   const schema = Schema.String.pipe(
     Schema.decodeTo(
       Schema.String,
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: (value) => Effect.map(Prefix, (prefix) => prefix.value + value),
         encode: (value) => Effect.succeed(value),
       }),
