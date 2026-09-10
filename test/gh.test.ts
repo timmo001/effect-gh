@@ -116,7 +116,7 @@ test("JSON decodes through Schema, preserving decoding services", async () => {
   const schema = Schema.String.pipe(
     Schema.decodeTo(
       Schema.String,
-      SchemaTransformation.transformOrFail({
+      SchemaTransformation.transformEffect({
         decode: (value) => Effect.map(Prefix, (prefix) => prefix.value + value),
         encode: (value) => Effect.succeed(value),
       }),
