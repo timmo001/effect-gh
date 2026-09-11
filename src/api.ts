@@ -13,6 +13,7 @@ export const Method = Schema.Literals([
   "TRACE",
   "CONNECT",
 ]);
+
 export type Method = typeof Method.Type;
 
 const queryValue = Schema.Union([Schema.String, Schema.Finite, Schema.Boolean]);
@@ -54,9 +55,11 @@ const prepare = Effect.fn("Api.prepare")(function* (request: Request) {
   const input = yield* Schema.decodeEffect(requestSchema)(request).pipe(
     Effect.mapError((cause) => new GhDecodeError({ cause })),
   );
+
   const endpoint = yield* Effect.try({
     try: () => {
       const query: Array<string> = [];
+
       for (const [key, value] of Object.entries(input.query ?? {})) {
         for (const item of Array.isArray(value) ? value : [value]) {
           query.push(
@@ -64,35 +67,46 @@ const prepare = Effect.fn("Api.prepare")(function* (request: Request) {
           );
         }
       }
+
       if (query.length === 0) return input.endpoint;
       const fragmentIndex = input.endpoint.indexOf("#");
+
       const path =
         fragmentIndex === -1
           ? input.endpoint
           : input.endpoint.slice(0, fragmentIndex);
+
       const fragment =
         fragmentIndex === -1 ? "" : input.endpoint.slice(fragmentIndex);
+
       const separator = !path.includes("?")
         ? "?"
         : path.endsWith("?") || path.endsWith("&")
           ? ""
           : "&";
+
       return `${path}${separator}${query.join("&")}${fragment}`;
     },
     catch: (cause) => new GhDecodeError({ cause }),
   });
+
   const args = ["api", "--method", input.method];
+
   if (input.hostname !== undefined) args.push(`--hostname=${input.hostname}`);
+
   for (const [name, value] of Object.entries(input.headers ?? {})) {
     args.push(`--header=${name}: ${value}`);
   }
+
   let stdin: string | undefined;
+
   if (input.body !== undefined) {
     stdin = yield* Schema.encodeEffect(Schema.fromJsonString(Schema.Json))(
       input.body,
     ).pipe(Effect.mapError((cause) => new GhDecodeError({ cause })));
     args.push("--input", "-");
   }
+
   return { args, endpoint, options: { ...request.options, stdin } };
 });
 
@@ -102,6 +116,7 @@ export const raw = Effect.fn("Api.raw")(function* (
 ): Effect.fn.Return<GhOutput, GhError, Gh> {
   const command = yield* prepare(request);
   const gh = yield* Gh;
+
   return yield* gh.execute(
     [...command.args, "--", command.endpoint],
     command.options,
@@ -117,6 +132,7 @@ export const json = Effect.fn("Api.json")(function* <
 ): Effect.fn.Return<S["Type"], GhError, Gh | S["DecodingServices"]> {
   const command = yield* prepare(request);
   const gh = yield* Gh;
+
   return yield* gh.json(
     [...command.args, "--", command.endpoint],
     schema,
@@ -140,6 +156,7 @@ export const pages = Effect.fn("Api.pages")(function* <
   );
   const command = yield* prepare(request);
   const gh = yield* Gh;
+
   return yield* gh.json(
     [...command.args, "--paginate", "--slurp", "--", command.endpoint],
     Schema.Array(schema),

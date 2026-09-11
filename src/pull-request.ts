@@ -1,4 +1,4 @@
-import { Effect, Schema, Stream } from "effect";
+import { Effect, Match, Predicate, Schema, Stream } from "effect";
 import { GhDecodeError } from "./errors.js";
 import { Gh, type GhOptions } from "./gh.js";
 
@@ -11,6 +11,7 @@ export const Summary = Schema.Struct({
   headRefName: Schema.String,
   headRefOid: Schema.String,
 });
+
 export interface Summary extends Schema.Schema.Type<typeof Summary> {}
 
 export const Check = Schema.Struct({
@@ -20,6 +21,7 @@ export const Check = Schema.Struct({
   link: Schema.NullOr(Schema.String),
   workflow: Schema.NullOr(Schema.String),
 });
+
 export interface Check extends Schema.Schema.Type<typeof Check> {}
 
 export const ChecksResult = Schema.Struct({
@@ -27,6 +29,7 @@ export const ChecksResult = Schema.Struct({
   status: Schema.Literals(["success", "failure", "pending"]),
   exitCode: Schema.Literals([0, 1, 8]),
 });
+
 export interface ChecksResult extends Schema.Schema.Type<typeof ChecksResult> {}
 
 export interface Options extends GhOptions {
@@ -50,6 +53,7 @@ export const list = Effect.fn("PullRequest.list")(function* (
   options: ListOptions,
 ) {
   const gh = yield* Gh;
+
   const args = [
     "pr",
     "list",
@@ -58,8 +62,11 @@ export const list = Effect.fn("PullRequest.list")(function* (
     `--limit=${options.limit ?? 30}`,
     `--json=${fields}`,
   ];
+
   if (options.base !== undefined) args.push(`--base=${options.base}`);
+
   if (options.head !== undefined) args.push(`--head=${options.head}`);
+
   return yield* gh.json(args, Schema.Array(Summary), options);
 });
 
@@ -68,6 +75,7 @@ export const view = Effect.fn("PullRequest.view")(function* (
   options: Options,
 ) {
   const gh = yield* Gh;
+
   return yield* gh.json(
     [
       "pr",
@@ -88,20 +96,23 @@ export const checks = Effect.fn("PullRequest.checks")(function* (
   options: ChecksOptions,
 ) {
   const gh = yield* Gh;
+
   const args = [
     "pr",
     "checks",
     `--repo=${options.repository}`,
     "--json=name,state,bucket,link,workflow",
   ];
+
   if (options.required) args.push("--required");
   args.push("--", String(selector));
 
   let stdout = "";
+
   const commandError = yield* gh.stream(args, options).pipe(
     Stream.runForEach((chunk) =>
       Effect.sync(() => {
-        if (chunk._tag === "Stdout") stdout += chunk.text;
+        if (Predicate.isTagged(chunk, "Stdout")) stdout += chunk.text;
       }),
     ),
     Effect.as(undefined),
@@ -111,15 +122,23 @@ export const checks = Effect.fn("PullRequest.checks")(function* (
         : Effect.fail(error),
     ),
   );
+
   const decoded = yield* Schema.decodeEffect(
     Schema.fromJsonString(Schema.Array(Check)),
   )(stdout).pipe(
     Effect.mapError((cause) => commandError ?? new GhDecodeError({ cause })),
   );
+
   const exitCode = commandError?.exitCode === 8 ? 8 : commandError ? 1 : 0;
+
   return ChecksResult.make({
     checks: decoded,
-    status: exitCode === 8 ? "pending" : exitCode === 1 ? "failure" : "success",
+    status: Match.value(exitCode).pipe(
+      Match.when(8, () => "pending" as const),
+      Match.when(1, () => "failure" as const),
+      Match.when(0, () => "success" as const),
+      Match.exhaustive,
+    ),
     exitCode,
   });
 });

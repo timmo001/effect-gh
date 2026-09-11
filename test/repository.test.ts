@@ -21,15 +21,18 @@ test.each([undefined, "enterprise.example/owner/repo", "--help", "owner/a b"])(
         const fake = yield* fakeSpawner({
           stdout: textStream(JSON.stringify(repository)),
         });
+
         const operation = Repository.view(repo, {
           executable: "custom-gh",
           cwd: "/workspace",
           env: { CUSTOM: "value" },
         }).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer))));
+
         expect(fake.commands).toHaveLength(0);
         expect(yield* operation).toEqual(repository);
         expect(fake.commands).toHaveLength(1);
         const command = fake.commands[0];
+
         if (command?._tag !== "StandardCommand")
           throw new Error("Expected a standard command");
         expect(command.command).toBe("custom-gh");
@@ -54,9 +57,11 @@ test("repository view accepts a null default branch", async () => {
   await Effect.runPromise(
     Effect.gen(function* () {
       const empty = { ...repository, defaultBranchRef: null };
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(empty)),
       });
+
       expect(
         yield* Repository.view().pipe(
           Effect.provide(layer().pipe(Layer.provide(fake.layer))),
@@ -91,12 +96,14 @@ test("repository view propagates command failure before decoding", async () => {
         stderr: textStream("repository not found"),
         exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
       });
+
       const error = yield* Repository.view("owner/missing").pipe(
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
         Effect.flip,
       );
+
+      expect(error._tag).toBe("GhCommandError");
       expect(error).toMatchObject({
-        _tag: "GhCommandError",
         exitCode: 1,
         stderr: "repository not found",
       });

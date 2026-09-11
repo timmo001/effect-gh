@@ -20,13 +20,16 @@ test("issue list leaves default open state and limit 30 to gh", async () => {
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify([summary])),
       });
+
       const operation = Issue.list().pipe(
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
       );
+
       expect(fake.commands).toHaveLength(0);
       expect(yield* operation).toEqual([summary]);
       expect(fake.commands).toHaveLength(1);
       const command = fake.commands[0];
+
       if (command?._tag !== "StandardCommand")
         throw new Error("Expected a standard command");
       expect(command.args).toEqual([
@@ -63,6 +66,7 @@ test.each(["open", "closed", "all"] as const)(
           ).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer)))),
         ).toEqual([]);
         const command = fake.commands[0];
+
         if (command?._tag !== "StandardCommand")
           throw new Error("Expected a standard command");
         expect(command.command).toBe("custom-gh");
@@ -120,9 +124,11 @@ test.each([42, summary.url, "--web", "a b"])(
     await Effect.runPromise(
       Effect.gen(function* () {
         const issue = { ...summary, body: "" };
+
         const fake = yield* fakeSpawner({
           stdout: textStream(JSON.stringify(issue)),
         });
+
         expect(
           yield* Issue.view(
             selector,
@@ -134,6 +140,7 @@ test.each([42, summary.url, "--web", "a b"])(
           ).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer)))),
         ).toEqual(issue);
         const command = fake.commands[0];
+
         if (command?._tag !== "StandardCommand")
           throw new Error("Expected a standard command");
         expect(command.command).toBe("custom-gh");
@@ -164,15 +171,18 @@ test("issue view defaults to the current repository", async () => {
         state: "CLOSED",
         body: "Body\nwith text",
       };
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(issue)),
       });
+
       expect(
         yield* Issue.view(42).pipe(
           Effect.provide(layer().pipe(Layer.provide(fake.layer))),
         ),
       ).toEqual(issue);
       const command = fake.commands[0];
+
       if (command?._tag !== "StandardCommand")
         throw new Error("Expected a standard command");
       expect(command.args).toEqual([
@@ -212,21 +222,23 @@ test.each(["list", "view"] as const)(
             ),
           ).toBeInstanceOf(GhDecodeError);
         }
+
         const fake = yield* fakeSpawner({
           stderr: textStream("not found"),
           exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
         });
-        expect(
-          yield* (
-            operation === "list"
-              ? Effect.asVoid(Issue.list())
-              : Effect.asVoid(Issue.view(42))
-          ).pipe(
-            Effect.provide(layer().pipe(Layer.provide(fake.layer))),
-            Effect.flip,
-          ),
-        ).toMatchObject({
-          _tag: "GhCommandError",
+
+        const error = yield* (
+          operation === "list"
+            ? Effect.asVoid(Issue.list())
+            : Effect.asVoid(Issue.view(42))
+        ).pipe(
+          Effect.provide(layer().pipe(Layer.provide(fake.layer))),
+          Effect.flip,
+        );
+
+        expect(error._tag).toBe("GhCommandError");
+        expect(error).toMatchObject({
           exitCode: 1,
           stderr: "not found",
         });

@@ -2,6 +2,7 @@ import { Effect, Schema, Stream } from "effect";
 import { Gh, type GhOptions } from "./gh.js";
 
 const positiveInteger = Schema.Int.check(Schema.isGreaterThan(0));
+
 const repository = Schema.String.check(
   Schema.isPattern(
     /^(?:[a-zA-Z0-9.-]+(?::[0-9]+)?\/)?[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/,
@@ -18,6 +19,7 @@ export const Run = Schema.Struct({
   url: Schema.String,
   workflowName: Schema.NullOr(Schema.String),
 });
+
 export interface Run extends Schema.Schema.Type<typeof Run> {}
 
 const fields = Object.keys(Run.fields).join(",");
@@ -48,6 +50,7 @@ const listOptions = Schema.Struct({
     ]),
   ),
 });
+
 export interface ListOptions extends Schema.Schema.Type<typeof listOptions> {}
 
 const viewOptions = Schema.Struct({
@@ -55,6 +58,7 @@ const viewOptions = Schema.Struct({
   runId: positiveInteger,
   attempt: Schema.optionalKey(positiveInteger),
 });
+
 export interface ViewOptions extends Schema.Schema.Type<typeof viewOptions> {}
 
 const logsOptions = Schema.Struct({
@@ -62,6 +66,7 @@ const logsOptions = Schema.Struct({
   failedOnly: Schema.optionalKey(Schema.Boolean),
   job: Schema.optionalKey(positiveInteger),
 });
+
 export interface LogsOptions extends Schema.Schema.Type<typeof logsOptions> {}
 
 const watchOptions = Schema.Struct({
@@ -69,6 +74,7 @@ const watchOptions = Schema.Struct({
   runId: positiveInteger,
   interval: Schema.optionalKey(positiveInteger),
 });
+
 export interface WatchOptions extends Schema.Schema.Type<typeof watchOptions> {}
 
 export class InvalidOptions extends Schema.TaggedError<InvalidOptions>()(
@@ -91,6 +97,7 @@ export const list = Effect.fn("Workflow.list")(function* (
 ) {
   const query = yield* decodeOptions(listOptions, input);
   const gh = yield* Gh;
+
   const args = [
     "run",
     "list",
@@ -101,10 +108,15 @@ export const list = Effect.fn("Workflow.list")(function* (
     "--json",
     fields,
   ];
+
   if (query.branch !== undefined) args.push("--branch", query.branch);
+
   if (query.commit !== undefined) args.push("--commit", query.commit);
+
   if (query.workflow !== undefined) args.push("--workflow", query.workflow);
+
   if (query.status !== undefined) args.push("--status", query.status);
+
   return yield* gh.json(args, Schema.Array(Run), options);
 });
 
@@ -115,6 +127,7 @@ export const view = Effect.fn("Workflow.view")(function* (
 ) {
   const query = yield* decodeOptions(viewOptions, input);
   const gh = yield* Gh;
+
   const args = [
     "run",
     "view",
@@ -124,8 +137,10 @@ export const view = Effect.fn("Workflow.view")(function* (
     "--json",
     fields,
   ];
+
   if (query.attempt !== undefined)
     args.push("--attempt", String(query.attempt));
+
   return yield* gh.json(args, Run, options);
 });
 
@@ -136,6 +151,7 @@ export const logs = Effect.fn("Workflow.logs")(function* (
 ) {
   const query = yield* decodeOptions(logsOptions, input);
   const gh = yield* Gh;
+
   const args = [
     "run",
     "view",
@@ -144,9 +160,12 @@ export const logs = Effect.fn("Workflow.logs")(function* (
     query.repo,
     query.failedOnly ? "--log-failed" : "--log",
   ];
+
   if (query.attempt !== undefined)
     args.push("--attempt", String(query.attempt));
+
   if (query.job !== undefined) args.push("--job", String(query.job));
+
   return (yield* gh.execute(args, options)).stdout;
 });
 
@@ -160,6 +179,7 @@ export const watch = (input: WatchOptions, options?: GhOptions) =>
     Effect.gen(function* () {
       const query = yield* decodeOptions(watchOptions, input);
       const gh = yield* Gh;
+
       return gh.stream(
         [
           "run",

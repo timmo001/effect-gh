@@ -17,17 +17,21 @@ switch (Bun.argv[2]) {
     );
     break;
   }
+
   case "pipes": {
     for (let i = 0; i < 32; i++) {
       if (!process.stdout.write("o".repeat(8192)))
         await once(process.stdout, "drain");
+
       if (!process.stderr.write("e".repeat(8192)))
         await once(process.stderr, "drain");
     }
+
     process.stderr.write("trailing error");
     process.stdout.write("trailing output");
     break;
   }
+
   case "wait": {
     setInterval(() => {}, 60_000);
     process.stdout.write("ready");

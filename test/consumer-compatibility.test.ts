@@ -19,8 +19,10 @@ import { fakeSpawner, textStream } from "./helpers.js";
 
 const firstCommand = (commands: ReadonlyArray<ChildProcess.Command>) => {
   const command = commands[0];
+
   if (command?._tag !== "StandardCommand")
     throw new Error("Expected a standard command");
+
   return command;
 };
 
@@ -44,6 +46,7 @@ const notification = {
 } satisfies Notification;
 
 const sha = "a".repeat(40);
+
 const run = {
   id: 42,
   run_attempt: 2,
@@ -63,14 +66,17 @@ test("notification lists preserve nullable URLs and report only the fetched page
         ...notification,
         id: String(index),
       }));
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(threads)),
       });
+
       const result = yield* listNotifications({
         all: true,
         participating: true,
         since: "2026-09-09T12:00:00Z",
       }).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer))));
+
       expect(result).toEqual({ threads, fetchedCount: 50, mayHaveMore: true });
       expect(firstCommand(fake.commands).args).toEqual([
         "api",
@@ -96,10 +102,12 @@ test("notification schemas reject non-string subject URLs at the Gh boundary", a
           ]),
         ),
       });
+
       const error = yield* listNotifications().pipe(
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
         Effect.flip,
       );
+
       expect(error).toBeInstanceOf(GhDecodeError);
     }),
   );
@@ -144,6 +152,7 @@ test.each([true, false])(
     await Effect.runPromise(
       Effect.gen(function* () {
         let stdin = "";
+
         const fake = yield* fakeSpawner({
           stdin: Sink.forEach((chunk: Uint8Array) =>
             Effect.sync(() => {
@@ -151,6 +160,7 @@ test.each([true, false])(
             }),
           ),
         });
+
         const request = setIgnored("123", ignored);
         expect(fake.commands).toHaveLength(0);
         expect(
@@ -178,6 +188,7 @@ test("workflow pages preserve envelopes and attempts while selecting both branch
   await Effect.runPromise(
     Effect.gen(function* () {
       const previousAttempt = { ...run, run_attempt: 1 };
+
       const pages = [
         {
           total_count: 6,
@@ -195,14 +206,17 @@ test("workflow pages preserve envelopes and attempts while selecting both branch
           ],
         },
       ];
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(pages)),
       });
+
       const result = yield* listBranchRuns(
         "owner/repo",
         "feature/sdk",
         sha,
       ).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer))));
+
       expect(result).toEqual({ pages, runs: [previousAttempt, run] });
       expect(firstCommand(fake.commands).args).toEqual([
         "api",
@@ -227,6 +241,7 @@ test("attempt jobs retain page shapes, optional steps and nullable conclusions",
         conclusion: null,
         html_url: `${run.html_url}/job/10`,
       };
+
       const failed = {
         ...job,
         id: 11,
@@ -236,10 +251,13 @@ test("attempt jobs retain page shapes, optional steps and nullable conclusions",
           { number: 2, name: "Upload", conclusion: null },
         ],
       };
+
       const pages = [{ jobs: [job] }, { jobs: [failed] }];
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(pages)),
       });
+
       expect(
         yield* listAttemptJobs("owner/repo", run).pipe(
           Effect.provide(layer().pipe(Layer.provide(fake.layer))),

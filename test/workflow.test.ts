@@ -7,12 +7,13 @@ import {
   GhDecodeError,
   GhTimeoutError,
 } from "../src/errors.js";
-import { layer, type GhChunk } from "../src/gh.js";
+import { GhChunk, layer } from "../src/gh.js";
 import * as Workflow from "../src/workflow.js";
 import { fakeSpawner, textStream } from "./helpers.js";
 
 const fields =
   "databaseId,attempt,headBranch,headSha,status,conclusion,url,workflowName";
+
 const run = {
   databaseId: 123,
   attempt: 2,
@@ -30,6 +31,7 @@ test("list is lazy and sends bounded branch and commit filters literally", async
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify([run])),
       });
+
       const request = Workflow.list({
         repo: "github.example/owner/repo",
         branch: "feature/$(literal)",
@@ -38,6 +40,7 @@ test("list is lazy and sends bounded branch and commit filters literally", async
         status: "in_progress",
         limit: 5,
       });
+
       expect(fake.commands).toHaveLength(0);
       expect(
         yield* request.pipe(
@@ -102,9 +105,11 @@ test("view decodes nullable fields and selects an explicit attempt", async () =>
         conclusion: null,
         workflowName: null,
       };
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(nullable)),
       });
+
       expect(
         yield* Workflow.view({
           repo: "owner/repo",
@@ -138,6 +143,7 @@ test.each([false, true])(
           stdout: textStream("build\tstep\tfailed\n"),
           stderr: textStream("diagnostic"),
         });
+
         expect(
           yield* Workflow.logs({
             repo: "owner/repo",
@@ -174,6 +180,7 @@ test.each([
   await Effect.runPromise(
     Effect.gen(function* () {
       const fake = yield* fakeSpawner({ stdout: textStream(stdout) });
+
       const error = yield* Workflow.view({
         repo: "owner/repo",
         runId: 123,
@@ -181,6 +188,7 @@ test.each([
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
         Effect.flip,
       );
+
       expect(error).toBeInstanceOf(GhDecodeError);
     }),
   );
@@ -194,7 +202,9 @@ test("nonzero list, view and logs exits propagate without decoding", async () =>
         stderr: textStream("forbidden"),
         exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(4)),
       });
+
       const provided = layer().pipe(Layer.provide(fake.layer));
+
       for (const request of [
         Workflow.list({ repo: "owner/repo" }).pipe(Effect.asVoid),
         Workflow.view({ repo: "owner/repo", runId: 123 }).pipe(Effect.asVoid),
@@ -204,9 +214,11 @@ test("nonzero list, view and logs exits propagate without decoding", async () =>
           Effect.provide(provided),
           Effect.flip,
         );
+
         expect(error).toBeInstanceOf(GhCommandError);
         expect(error).toMatchObject({ exitCode: 4, stderr: "forbidden" });
       }
+
       expect(fake.commands).toHaveLength(3);
       expect(fake.releases()).toBe(3);
     }),
@@ -225,6 +237,7 @@ test.each([
     Effect.gen(function* () {
       const fake = yield* fakeSpawner();
       const provided = layer().pipe(Layer.provide(fake.layer));
+
       const requests = [
         Workflow.list({ repo: "owner/repo", limit: invalid }),
         Workflow.view({ repo: "owner/repo", runId: invalid }),
@@ -235,11 +248,13 @@ test.each([
           Workflow.watch({ repo: "owner/repo", runId: 123, interval: invalid }),
         ),
       ];
+
       for (const request of requests) {
         expect(
           yield* request.pipe(Effect.provide(provided), Effect.flip),
         ).toBeInstanceOf(Workflow.InvalidOptions);
       }
+
       expect(fake.commands).toHaveLength(0);
     }),
   );
@@ -251,6 +266,7 @@ test("option-like run IDs and implicit repositories are rejected at runtime", as
       const fake = yield* fakeSpawner();
       // @ts-expect-error Exercise callers that bypass the TypeScript contract.
       const invalidId = Workflow.view({ repo: "owner/repo", runId: "--web" });
+
       for (const request of [
         invalidId.pipe(Effect.asVoid),
         Workflow.list({ repo: "" }).pipe(Effect.asVoid),
@@ -263,6 +279,7 @@ test("option-like run IDs and implicit repositories are rejected at runtime", as
           ),
         ).toBeInstanceOf(Workflow.InvalidOptions);
       }
+
       expect(fake.commands).toHaveLength(0);
     }),
   );
@@ -276,13 +293,17 @@ test("watch emits both tagged pipes before failed exit, without retrying", async
         stderr: textStream("failed"),
         exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
       });
+
       const chunks: Array<GhChunk> = [];
+
       const stream = Workflow.watch({
         repo: "owner/repo",
         runId: 123,
         interval: 5,
       });
+
       expect(fake.commands).toHaveLength(0);
+
       const error = yield* stream.pipe(
         Stream.runForEach((chunk) =>
           Effect.sync(() => {
@@ -292,8 +313,13 @@ test("watch emits both tagged pipes before failed exit, without retrying", async
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
         Effect.flip,
       );
-      expect(chunks).toContainEqual({ _tag: "Stdout", text: "building" });
-      expect(chunks).toContainEqual({ _tag: "Stderr", text: "failed" });
+
+      expect(chunks).toContainEqual(
+        GhChunk.cases.Stdout.make({ text: "building" }),
+      );
+      expect(chunks).toContainEqual(
+        GhChunk.cases.Stderr.make({ text: "failed" }),
+      );
       expect(error).toBeInstanceOf(GhCommandError);
       expect(error).toMatchObject({ exitCode: 1, stderr: "failed" });
       expect(fake.commands).toHaveLength(1);
@@ -322,6 +348,7 @@ test("early watch cancellation finalises the child and defaults to a three-secon
         stdout: textStream("ready").pipe(Stream.concat(Stream.never)),
         exitCode: Effect.never,
       });
+
       const chunks = yield* Workflow.watch({
         repo: "owner/repo",
         runId: 123,
@@ -330,7 +357,8 @@ test("early watch cancellation finalises the child and defaults to a three-secon
         Stream.runCollect,
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
       );
-      expect(chunks).toEqual([{ _tag: "Stdout", text: "ready" }]);
+
+      expect(chunks).toEqual([GhChunk.cases.Stdout.make({ text: "ready" })]);
       expect(fake.commands[0]).toMatchObject({
         args: [
           "run",
@@ -356,6 +384,7 @@ test.each([false, true])(
       Effect.gen(function* () {
         const exit = yield* Deferred.make<ChildProcessSpawner.ExitCode>();
         const fake = yield* fakeSpawner({ exitCode: Deferred.await(exit) });
+
         const fiber = yield* Workflow.watch(
           { repo: "owner/repo", runId: 123 },
           disabled ? { timeout: null } : undefined,
@@ -366,8 +395,10 @@ test.each([false, true])(
           ),
           Effect.forkChild,
         );
+
         yield* Deferred.await(fake.spawned);
         yield* TestClock.adjust("2 seconds");
+
         if (disabled) {
           expect(fake.releases()).toBe(0);
           yield* Deferred.succeed(exit, ChildProcessSpawner.ExitCode(0));
@@ -377,6 +408,7 @@ test.each([false, true])(
             GhTimeoutError,
           );
         }
+
         expect(fake.releases()).toBe(1);
       }).pipe(Effect.provide(TestClock.layer())),
     );
