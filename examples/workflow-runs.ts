@@ -14,6 +14,7 @@ export const Run = Schema.Struct({
   conclusion: Schema.NullOr(Schema.String),
   html_url: Schema.String,
 });
+
 export interface Run extends Schema.Schema.Type<typeof Run> {}
 
 const RunPage = Schema.Struct({
@@ -48,6 +49,7 @@ export const listBranchRuns = Effect.fn("WorkflowRuns.listBranchRuns")(
       },
       RunPage,
     );
+
     // Retain envelopes for callers that check completeness or reconcile attempts.
     return {
       pages,
@@ -69,6 +71,7 @@ export const listAttemptJobs = Effect.fn("WorkflowRuns.listAttemptJobs")(
       },
       Schema.Struct({ jobs: Schema.Array(Job) }),
     );
+
     return { pages, jobs: pages.flatMap((page) => page.jobs) };
   },
 );

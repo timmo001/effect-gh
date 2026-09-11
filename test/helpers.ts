@@ -7,6 +7,7 @@ export const fakeSpawner = Effect.fn("test.fakeSpawner")(function* (
   const spawned = yield* Deferred.make<void>();
   const commands: Array<ChildProcess.Command> = [];
   let releases = 0;
+
   const handle = ChildProcessSpawner.makeHandle({
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
@@ -21,12 +22,14 @@ export const fakeSpawner = Effect.fn("test.fakeSpawner")(function* (
     unref: Effect.succeed(Effect.void),
     ...overrides,
   });
+
   const spawn = Effect.fn("test.spawn")(function* (
     command: ChildProcess.Command,
   ) {
     return yield* Effect.acquireRelease(
       Effect.sync(() => {
         commands.push(command);
+
         return handle;
       }).pipe(Effect.tap(() => Deferred.succeed(spawned, undefined))),
       () =>
@@ -35,6 +38,7 @@ export const fakeSpawner = Effect.fn("test.fakeSpawner")(function* (
         }),
     );
   });
+
   return {
     commands,
     spawned,

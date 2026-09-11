@@ -15,8 +15,10 @@ import { fakeSpawner, textStream } from "./helpers.js";
 
 const firstCommand = (commands: ReadonlyArray<ChildProcess.Command>) => {
   const command = commands[0];
+
   if (command?._tag !== "StandardCommand")
     throw new Error("Expected a standard command");
+
   return command;
 };
 
@@ -24,6 +26,7 @@ test("raw sends an explicit method, JSON stdin, literal headers and inherited Gh
   await Effect.runPromise(
     Effect.gen(function* () {
       let stdin = "";
+
       const fake = yield* fakeSpawner({
         stdout: textStream("plain response"),
         stderr: textStream("diagnostic"),
@@ -33,12 +36,14 @@ test("raw sends an explicit method, JSON stdin, literal headers and inherited Gh
           }),
         ),
       });
+
       const body = {
         title: "@private-file",
         enabled: false,
         count: 3,
         nested: [null, "{owner}"],
       };
+
       const request = Api.raw({
         endpoint: "repos/{owner}/{repo}/issues",
         method: "POST",
@@ -48,6 +53,7 @@ test("raw sends an explicit method, JSON stdin, literal headers and inherited Gh
         body,
         options: { cwd: "/override" },
       });
+
       expect(fake.commands).toHaveLength(0);
       expect(
         yield* request.pipe(
@@ -96,11 +102,13 @@ test.each([...Api.Method.literals])(
     await Effect.runPromise(
       Effect.gen(function* () {
         const fake = yield* fakeSpawner();
+
         const output = yield* Api.raw({ endpoint: "repos/o/r", method }).pipe(
           Effect.provide(
             layer({ stdin: "do not send" }).pipe(Layer.provide(fake.layer)),
           ),
         );
+
         expect(output).toEqual({ stdout: "", stderr: "", exitCode: 0 });
         const command = firstCommand(fake.commands);
         expect(command.args).toEqual([
@@ -172,6 +180,7 @@ test("null is an explicit JSON body", async () => {
   await Effect.runPromise(
     Effect.gen(function* () {
       let stdin = "";
+
       const fake = yield* fakeSpawner({
         stdin: Sink.forEach((chunk: Uint8Array) =>
           Effect.sync(() => {
@@ -179,6 +188,7 @@ test("null is an explicit JSON body", async () => {
           }),
         ),
       });
+
       yield* Api.raw({ endpoint: "endpoint", method: "PUT", body: null }).pipe(
         Effect.provide(layer().pipe(Layer.provide(fake.layer))),
       );
@@ -194,6 +204,7 @@ test.each(["not JSON", '{"id":"wrong"}', ""])(
     await Effect.runPromise(
       Effect.gen(function* () {
         const fake = yield* fakeSpawner({ stdout: textStream(stdout) });
+
         const error = yield* Api.json(
           { endpoint: "endpoint", method: "GET" },
           Schema.Struct({ id: Schema.Int }),
@@ -201,6 +212,7 @@ test.each(["not JSON", '{"id":"wrong"}', ""])(
           Effect.provide(layer().pipe(Layer.provide(fake.layer))),
           Effect.flip,
         );
+
         expect(error).toBeInstanceOf(GhDecodeError);
         expect(fake.commands).toHaveLength(1);
       }),
@@ -235,9 +247,11 @@ test("pages preserves arrays of records as separate pages", async () => {
   await Effect.runPromise(
     Effect.gen(function* () {
       const output = [[{ id: 1 }, { id: 2 }], [{ id: 3 }], []];
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(output)),
       });
+
       const result = yield* Api.pages(
         { endpoint: "repos/o/r/issues", method: "GET", query: { per_page: 2 } },
         Schema.Array(Schema.Struct({ id: Schema.Int })),
@@ -246,6 +260,7 @@ test("pages preserves arrays of records as separate pages", async () => {
           layer({ stdin: "ignored" }).pipe(Layer.provide(fake.layer)),
         ),
       );
+
       expect(result).toEqual(output);
       expect(firstCommand(fake.commands).args).toEqual([
         "api",
@@ -266,24 +281,29 @@ test("pages preserves object envelopes and rejects an invalid page", async () =>
     total_count: Schema.Int,
     items: Schema.Array(Schema.Struct({ id: Schema.Int })),
   });
+
   await Effect.runPromise(
     Effect.gen(function* () {
       const output = [
         { total_count: 2, items: [{ id: 1 }] },
         { total_count: 2, items: [{ id: 2 }] },
       ];
+
       const fake = yield* fakeSpawner({
         stdout: textStream(JSON.stringify(output)),
       });
+
       expect(
         yield* Api.pages(
           { endpoint: "search/issues", method: "GET" },
           page,
         ).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer)))),
       ).toEqual(output);
+
       const invalid = yield* fakeSpawner({
         stdout: textStream('[{"total_count":2,"items":[]},{"items":[]}]'),
       });
+
       expect(
         yield* Api.pages(
           { endpoint: "search/issues", method: "GET" },
@@ -301,6 +321,7 @@ test("json and pages preserve schema decoding service requirements", async () =>
   class Prefix extends Context.Service<Prefix, { readonly value: string }>()(
     "test/api/Prefix",
   ) {}
+
   const schema = Schema.String.pipe(
     Schema.decodeTo(
       Schema.String,
@@ -310,15 +331,18 @@ test("json and pages preserve schema decoding service requirements", async () =>
       }),
     ),
   );
+
   const single: Effect.Effect<string, GhError, Gh | Prefix> = Api.json(
     { endpoint: "endpoint", method: "GET" },
     schema,
   );
+
   const multiple: Effect.Effect<
     ReadonlyArray<string>,
     GhError,
     Gh | Prefix
   > = Api.pages({ endpoint: "endpoint", method: "GET" }, schema);
+
   await Effect.runPromise(
     Effect.gen(function* () {
       const one = yield* fakeSpawner({ stdout: textStream('"one"') });
@@ -340,6 +364,7 @@ test("json and pages preserve schema decoding service requirements", async () =>
 test("invalid query encoding and cyclic or non-finite JSON fail lazily before spawning", async () => {
   const cyclic: Record<string, Schema.Json> = {};
   cyclic.self = cyclic;
+
   const requests: ReadonlyArray<Api.Request> = [
     { endpoint: "endpoint", method: "GET", query: { q: "\ud800" } },
     { endpoint: "endpoint", method: "GET", query: { "\ud800": "q" } },
@@ -347,9 +372,11 @@ test("invalid query encoding and cyclic or non-finite JSON fail lazily before sp
     { endpoint: "endpoint", method: "POST", body: cyclic },
     { endpoint: "endpoint", method: "POST", body: { n: NaN } },
   ];
+
   await Effect.runPromise(
     Effect.gen(function* () {
       const fake = yield* fakeSpawner();
+
       for (const request of requests) {
         const effect = Api.raw(request);
         expect(fake.commands).toHaveLength(0);
@@ -360,6 +387,7 @@ test("invalid query encoding and cyclic or non-finite JSON fail lazily before sp
           ),
         ).toBeInstanceOf(GhDecodeError);
       }
+
       expect(fake.commands).toHaveLength(0);
     }),
   );
@@ -372,9 +400,11 @@ test("pages rejects writes, bodies and GraphQL before spawning", async () => {
     { endpoint: "graphql", method: "GET" },
     { endpoint: "/graphql?query=x", method: "GET" },
   ];
+
   await Effect.runPromise(
     Effect.gen(function* () {
       const fake = yield* fakeSpawner();
+
       for (const request of requests) {
         // @ts-expect-error Also verify JavaScript callers cannot paginate mutations or bodies.
         const effect = Api.pages(request, Schema.Unknown);
@@ -385,6 +415,7 @@ test("pages rejects writes, bodies and GraphQL before spawning", async () => {
           ),
         ).toBeInstanceOf(GhDecodeError);
       }
+
       expect(fake.commands).toHaveLength(0);
     }),
   );
@@ -404,6 +435,7 @@ test.each([
           stderr: textStream("HTTP 503: retry later"),
           exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(1)),
         });
+
         const error = yield* Api.json(
           { endpoint: "endpoint", method, body: { value: "once" } },
           Schema.Unknown,
@@ -411,6 +443,7 @@ test.each([
           Effect.provide(layer().pipe(Layer.provide(fake.layer))),
           Effect.flip,
         );
+
         expect(error._tag).toBe("GhCommandError");
         expect(fake.commands).toHaveLength(1);
         expect(fake.releases()).toBe(1);

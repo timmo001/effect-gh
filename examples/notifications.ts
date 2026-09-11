@@ -20,6 +20,7 @@ export const Notification = Schema.Struct({
     latest_comment_url: Schema.NullOr(Schema.String),
   }),
 });
+
 export interface Notification extends Schema.Schema.Type<typeof Notification> {}
 
 export interface ListOptions {
@@ -46,6 +47,7 @@ export const listNotifications = Effect.fn("Notifications.list")(function* (
     },
     Schema.Array(Notification),
   );
+
   // This is one page, so fetchedCount is not the total inbox count.
   return {
     threads,

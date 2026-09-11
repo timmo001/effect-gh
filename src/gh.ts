@@ -3,6 +3,7 @@ import {
   Duration,
   Effect,
   Layer,
+  Match,
   Predicate,
   Schema,
   Stream,
@@ -31,12 +32,14 @@ export const GhOutput = Schema.Struct({
   stderr: Schema.String,
   exitCode: Schema.Int,
 });
+
 export interface GhOutput extends Schema.Schema.Type<typeof GhOutput> {}
 
 export const GhChunk = Schema.TaggedUnion({
   Stdout: { text: Schema.String },
   Stderr: { text: Schema.String },
 });
+
 export type GhChunk = typeof GhChunk.Type;
 
 export interface Interface {
@@ -74,6 +77,7 @@ export const layer = (
         options: GhOptions,
       ) {
         const executable = options.executable ?? "gh";
+
         const handle = yield* spawner
           .spawn(
             ChildProcess.make(executable, args, {
@@ -106,6 +110,7 @@ export const layer = (
 
         let stderr = "";
         let stderrTruncated = false;
+
         const output = Stream.merge(
           handle.stdout.pipe(
             Stream.decodeText(),
@@ -116,6 +121,7 @@ export const layer = (
             Stream.map((text) => {
               stderrTruncated ||= stderr.length + text.length > stderrLimit;
               stderr = (stderr + text).slice(-stderrLimit);
+
               return GhChunk.cases.Stderr.make({ text });
             }),
           ),
@@ -131,6 +137,7 @@ export const layer = (
               (cause) => new GhPlatformError({ executable, cause }),
             ),
           );
+
           if (exitCode !== 0) {
             return yield* new GhCommandError({
               executable,
@@ -140,14 +147,17 @@ export const layer = (
             });
           }
         });
+
         const completed = output.pipe(
           Stream.concat(Stream.fromEffect(completion).pipe(Stream.drain)),
         );
+
         if (options.stdin === undefined) return completed;
 
         const input = Predicate.isString(options.stdin)
           ? new TextEncoder().encode(options.stdin)
           : options.stdin;
+
         return completed.pipe(
           Stream.mergeEffect(
             Stream.run(Stream.succeed(input), handle.stdin).pipe(
@@ -163,10 +173,13 @@ export const layer = (
         Stream.suspend(() => {
           const options = { ...defaults, ...overrides };
           const output = Stream.unwrap(open(args, options));
+
           if (options.timeout == null) return output;
+
           if (!Duration.isFinite(Duration.fromInputUnsafe(options.timeout)))
             return output;
           const timeoutMs = Duration.toMillis(options.timeout);
+
           return output.pipe(
             Stream.mergeEffect(
               Effect.sleep(options.timeout).pipe(
@@ -191,9 +204,17 @@ export const layer = (
           Stream.runFold(
             (): GhOutput => ({ stdout: "", stderr: "", exitCode: 0 }),
             (output, chunk) =>
-              chunk._tag === "Stdout"
-                ? { ...output, stdout: output.stdout + chunk.text }
-                : { ...output, stderr: output.stderr + chunk.text },
+              Match.value(chunk).pipe(
+                Match.tag("Stdout", ({ text }) => ({
+                  ...output,
+                  stdout: output.stdout + text,
+                })),
+                Match.tag("Stderr", ({ text }) => ({
+                  ...output,
+                  stderr: output.stderr + text,
+                })),
+                Match.exhaustive,
+              ),
           ),
         );
       });
@@ -204,6 +225,7 @@ export const layer = (
         options?: GhOptions,
       ) {
         const output = yield* execute(args, options);
+
         return yield* Schema.decodeEffect(Schema.fromJsonString(schema))(
           output.stdout,
         ).pipe(Effect.mapError((cause) => new GhDecodeError({ cause })));

@@ -8,12 +8,14 @@ export const IssueSummary = Schema.Struct({
   state: Schema.Literals(["OPEN", "CLOSED"]),
   updatedAt: Schema.String,
 });
+
 export interface IssueSummary extends Schema.Schema.Type<typeof IssueSummary> {}
 
 export const Issue = Schema.Struct({
   ...IssueSummary.fields,
   body: Schema.String,
 });
+
 export interface Issue extends Schema.Schema.Type<typeof Issue> {}
 
 export interface ViewOptions {
@@ -38,6 +40,7 @@ export class InvalidInput extends Schema.TaggedError<InvalidInput>()(
 ) {}
 
 const positiveInteger = Schema.Int.check(Schema.isGreaterThan(0));
+
 const summaryFields = "number,title,url,state,updatedAt";
 
 /** Fetch a bounded list using gh's default state and limit unless overridden. */
@@ -46,18 +49,26 @@ export const list = Effect.fn("Issue.list")(function* (
   execution?: GhOptions,
 ) {
   const args = ["issue", "list", "--json", summaryFields];
+
   if (options.repo !== undefined) args.push("--repo", options.repo);
+
   if (options.state !== undefined) args.push("--state", options.state);
+
   if (options.limit !== undefined) {
     const limit = yield* Schema.decodeEffect(positiveInteger)(
       options.limit,
     ).pipe(Effect.mapError((cause) => new InvalidInput({ cause })));
+
     args.push("--limit", String(limit));
   }
+
   for (const label of options.labels ?? []) args.push("--label", label);
+
   if (options.assignee !== undefined) args.push("--assignee", options.assignee);
+
   if (options.search !== undefined) args.push("--search", options.search);
   const gh = yield* Gh;
+
   return yield* gh.json(args, Schema.Array(IssueSummary), execution);
 });
 
@@ -72,9 +83,12 @@ export const view = Effect.fn("Issue.view")(function* (
       Effect.mapError((cause) => new InvalidInput({ cause })),
     );
   }
+
   const gh = yield* Gh;
   const args = ["issue", "view", "--json", `${summaryFields},body`];
+
   if (options.repo !== undefined) args.push("--repo", options.repo);
   args.push("--", String(issue));
+
   return yield* gh.json(args, Issue, execution);
 });
