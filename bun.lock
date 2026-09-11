@@ -10,13 +10,13 @@
         "@oxlint/plugins": "1.82.0",
         "@timmo001/oxlint-rules": "0.3.3",
         "@types/bun": "1.4.2",
-        "effect": "4.0.0-rc.113",
+        "effect": "4.0.0-rc.115",
         "oxlint": "1.82.0",
         "prettier": "3.9.6",
         "typescript": "7.0.2",
       },
       "peerDependencies": {
-        "effect": "4.0.0-rc.113",
+        "effect": "4.0.0-rc.115",
       },
     },
   },
@@ -146,7 +146,7 @@
 
     "cluster-key-slot": ["cluster-key-slot@1.1.2", "", {}, "sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA=="],
 
-    "effect": ["effect@4.0.0-rc.113", "", {}, "sha512-uZ4Bh7KSlw2sdVdNDHPLSNjLGH+MWap7cheIHZoB/1T/ZJ3pvI4KiN3kUp50MpFKXhygOMmReJJOwWMQPwpPAg=="],
+    "effect": ["effect@4.0.0-rc.115", "", {}, "sha512-ogYulZ5ffeOzrJqQrG0XOkDO5lKn2s9KNHhoxJy/6wKUkF0i12dlVXWA9TgsgQ+zV/JzizyG0+XMPepZEQX6vw=="],
 
     "mime": ["mime@4.1.0", "", { "bin": { "mime": "bin/cli.js" } }, "sha512-X5ju04+cAzsojXKes0B/S4tcYtFAJ6tTMuSPBEn9CPGlrWr8Fiw7qYeLT0XyH80HSoAoqWCaz+MWKh22P7G1cw=="],
 
