@@ -5,7 +5,7 @@
     "": {
       "name": "@timmo001/effect-gh",
       "devDependencies": {
-        "@effect/platform-node": "4.0.0-rc.113",
+        "@effect/platform-node": "4.0.0-rc.114",
         "@effect/tsgo": "0.45.0",
         "@oxlint/plugins": "1.82.0",
         "@timmo001/oxlint-rules": "0.3.3",
@@ -24,7 +24,7 @@
     "@effect/tsgo",
   ],
   "packages": {
-    "@effect/platform-node": ["@effect/platform-node@4.0.0-rc.113", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-rc.113", "undici": "^8.10.2" }, "peerDependencies": { "effect": "^4.0.0-rc.113", "redis": ">=5.0.0 <7.0.0" } }, "sha512-8luSE2JcGVsALQ6cZOWh5jdZu+VgcUKIKPfhN/MjX+ZzIuK/krm3jZBHYZdhqkXjM9s8aYGBxNMHGF0WzF+Gpg=="],
+    "@effect/platform-node": ["@effect/platform-node@4.0.0-rc.114", "", { "dependencies": { "@effect/platform-node-shared": "^4.0.0-rc.114", "undici": "^8.10.2" }, "peerDependencies": { "effect": "^4.0.0-rc.114", "redis": ">=5.0.0 <7.0.0" } }, "sha512-eqPvK8XswUw+FVe7CVqiyYUz4NHPz/1DiNsXi8GwIrsMOLT2wLteaAUID4grjDX7XWK1ONUVy4gS9IwBvp+EjA=="],
 
     "@effect/platform-node-shared": ["@effect/platform-node-shared@4.0.0-rc.115", "", { "dependencies": { "@types/ws": "^8.18.1", "ws": "^8.21.3" }, "peerDependencies": { "effect": "^4.0.0-rc.115" } }, "sha512-rcBwhDIfb82akJoTv7Vwh8K5x9vC/XfuePS7JjOr+z+dORXzsmKqI1BUQF27ARCN9fTAbDh7I6YvBlWhLjnqNg=="],
 
