@@ -42,7 +42,7 @@
     "prepack": "bun run build"
   },
   "peerDependencies": {
-    "effect": "4.0.0-rc.116"
+    "effect": "4.0.0-rc.117"
   },
   "devDependencies": {
     "@effect/platform-node": "4.0.0-rc.116",
@@ -50,7 +50,7 @@
     "@oxlint/plugins": "1.83.0",
     "@timmo001/oxlint-rules": "0.3.5",
     "@types/bun": "1.4.2",
-    "effect": "4.0.0-rc.116",
+    "effect": "4.0.0-rc.117",
     "oxlint": "1.83.0",
     "prettier": "3.9.8",
     "typescript": "7.0.2"
