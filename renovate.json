@@ -11,13 +11,19 @@
   "minimumReleaseAge": "2 days",
   "packageRules": [
     {
+      "description": "Update the Effect runtime and integrations together.",
+      "matchPackageNames": ["effect", "@effect/platform-*", "@effect/vitest"],
+      "groupName": "Effect",
+      "groupSlug": "effect"
+    },
+    {
       "description": "Update first-party packages and workflows without a release delay.",
       "matchPackageNames": ["@timmo001/**", "timmo001/workflows"],
       "minimumReleaseAge": null
     },
     {
       "description": "Use the shorter release delay for Effect dependencies.",
-      "matchPackageNames": ["effect", "@effect/tsgo"],
+      "matchPackageNames": ["effect", "@effect/platform-node", "@effect/tsgo"],
       "minimumReleaseAge": "2 hours"
     }
   ]
