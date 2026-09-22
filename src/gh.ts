@@ -202,7 +202,7 @@ export const layer = (
       ) {
         return yield* stream(args, options).pipe(
           Stream.runFold(
-            (): GhOutput => ({ stdout: "", stderr: "", exitCode: 0 }),
+            () => ({ stdout: "", stderr: "", exitCode: 0 }) satisfies GhOutput,
             (output, chunk) =>
               Match.value(chunk).pipe(
                 Match.tag("Stdout", ({ text }) => ({

@@ -6,13 +6,13 @@ import { layer } from "../src/gh.js";
 import * as Issue from "../src/issue.js";
 import { fakeSpawner, textStream } from "./helpers.js";
 
-const summary: Issue.IssueSummary = {
+const summary = {
   number: 42,
   title: "An issue",
   url: "https://github.com/owner/repo/issues/42",
   state: "OPEN",
   updatedAt: "2026-09-09T12:00:00Z",
-};
+} satisfies Issue.IssueSummary;
 
 test("issue list leaves default open state and limit 30 to gh", async () => {
   await Effect.runPromise(
