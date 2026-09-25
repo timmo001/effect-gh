@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@ef14244e5cfe3a9da6441796ee7f39f2f5bde233 # master
+    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@250e9edf712bd8526f6977a113116eda3695f732 # master
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       node-version: ${{ needs.tools.outputs.node }}
