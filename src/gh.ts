@@ -8,7 +8,7 @@ import {
   Schema,
   Stream,
 } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import {
   GhCommandError,
   GhDecodeError,

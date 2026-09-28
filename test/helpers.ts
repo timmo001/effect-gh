@@ -1,5 +1,5 @@
 import { Deferred, Effect, Layer, Sink, Stream } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
 export const fakeSpawner = Effect.fn("test.fakeSpawner")(function* (
   overrides: Partial<ChildProcessSpawner.ChildProcessHandle> = {},

@@ -7,7 +7,7 @@ import {
   SchemaTransformation,
   Sink,
 } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as Api from "../src/api.js";
 import { GhDecodeError, type GhError } from "../src/errors.js";
 import { Gh, layer } from "../src/gh.js";
