@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { Effect, Layer, Sink } from "effect";
-import { ChildProcess } from "effect/unstable/process";
+import { ChildProcess } from "effect/process";
 import {
   listNotifications,
   markDone,

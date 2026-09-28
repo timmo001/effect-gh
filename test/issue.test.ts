@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import { Effect, Layer } from "effect";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcessSpawner } from "effect/process";
 import { GhDecodeError } from "../src/errors.js";
 import { layer } from "../src/gh.js";
 import * as Issue from "../src/issue.js";

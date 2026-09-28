@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { Deferred, Effect, Fiber, Layer, PlatformError, Stream } from "effect";
 import { TestClock } from "effect/testing";
-import { ChildProcessSpawner } from "effect/unstable/process";
+import { ChildProcessSpawner } from "effect/process";
 import {
   GhCommandError,
   GhDecodeError,
