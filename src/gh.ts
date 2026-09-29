@@ -16,6 +16,7 @@ import {
   GhTimeoutError,
   type GhError,
 } from "./errors.js";
+import { retryTransient } from "./transient.js";
 
 export interface GhOptions {
   readonly executable?: string;
@@ -60,9 +61,12 @@ export interface Interface {
 
 export class Gh extends Context.Service<Gh, Interface>()(
   "@timmo001/effect-gh/Gh",
-) {}
+) {
+  /** Retries transient `gh` failures with bounded, jittered backoff. See {@link retryTransient}. */
+  static readonly retryTransient = retryTransient;
+}
 
-const stderrLimit = 65_536;
+const outputLimit = 65_536;
 
 export const layer = (
   defaults: GhOptions = {},
@@ -108,19 +112,26 @@ export const layer = (
             ),
           );
 
+        let stdout = "";
+        let stdoutTruncated = false;
         let stderr = "";
         let stderrTruncated = false;
 
         const output = Stream.merge(
           handle.stdout.pipe(
             Stream.decodeText(),
-            Stream.map((text) => GhChunk.cases.Stdout.make({ text })),
+            Stream.map((text) => {
+              stdoutTruncated ||= stdout.length + text.length > outputLimit;
+              stdout = (stdout + text).slice(-outputLimit);
+
+              return GhChunk.cases.Stdout.make({ text });
+            }),
           ),
           handle.stderr.pipe(
             Stream.decodeText(),
             Stream.map((text) => {
-              stderrTruncated ||= stderr.length + text.length > stderrLimit;
-              stderr = (stderr + text).slice(-stderrLimit);
+              stderrTruncated ||= stderr.length + text.length > outputLimit;
+              stderr = (stderr + text).slice(-outputLimit);
 
               return GhChunk.cases.Stderr.make({ text });
             }),
@@ -142,6 +153,8 @@ export const layer = (
             return yield* new GhCommandError({
               executable,
               exitCode,
+              stdout,
+              stdoutTruncated,
               stderr,
               stderrTruncated,
             });

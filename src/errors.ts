@@ -5,6 +5,8 @@ export class GhCommandError extends Schema.TaggedError<GhCommandError>()(
   {
     executable: Schema.String,
     exitCode: Schema.Int,
+    stdout: Schema.String,
+    stdoutTruncated: Schema.Boolean,
     stderr: Schema.String,
     stderrTruncated: Schema.Boolean,
   },

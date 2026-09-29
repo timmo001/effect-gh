@@ -130,10 +130,11 @@ entries override inherited values; `undefined` removes a value. The SDK always
 disables prompts, colour, forced TTY and spinners, and selects `cat` as the pager.
 Stdin is closed unless supplied explicitly. No operation is automatically retried.
 
-Errors are tagged `GhCommandError` (nonzero exit with exit code and stderr),
-`GhPlatformError` (spawn or pipe failure), `GhTimeoutError`, or `GhDecodeError`
-(invalid JSON or a schema mismatch). Command errors retain only the last 65,536
-UTF-16 code units of stderr and flag truncation with `stderrTruncated`.
+Errors are tagged `GhCommandError` (nonzero exit with exit code, stdout and
+stderr), `GhPlatformError` (spawn or pipe failure), `GhTimeoutError`, or
+`GhDecodeError` (invalid JSON or a schema mismatch). Command errors retain only
+the last 65,536 UTF-16 code units of each output and flag truncation with
+`stdoutTruncated` and `stderrTruncated`.
 The stream emits trailing output before reporting a nonzero exit.
 
 Interruption, timeout and early stream termination close the child scope. The
@@ -178,11 +179,36 @@ through the raw `Gh` interface.
 ### Retries
 
 No SDK operation retries automatically. Mutations can have taken effect even
-when the CLI times out or loses the connection. Consumers can apply Effect
-`Schedule` and `Effect.retry` to known-idempotent reads with a bounded policy and
-their own transient-error classification. Decode errors, authentication failures
-and check-status exits are not transient errors. Do not transparently replay a
-stream after it has emitted output.
+when the CLI times out or loses the connection, so only retry known-idempotent
+reads, and do not transparently replay a stream after it has emitted output.
+
+`Gh.retryTransient(options?)` retries an effect failing with `GhError` while
+`isTransient` holds: timeouts, rate limits, HTTP 408, 429 and 5xx gateway
+statuses, and network failures. It defaults to three retries with jittered
+exponential backoff from 250 milliseconds, capped at 10 seconds
+(`defaultRetrySchedule`); pass `schedule` or `times` to change either. Decode
+errors, authentication failures and check-status exits are not transient.
+
+```ts
+import { Api, Gh } from "@timmo001/effect-gh";
+import { Schema } from "effect";
+
+const viewer = Api.json(
+  { endpoint: "user", method: "GET" },
+  Schema.Struct({ login: Schema.String }),
+).pipe(Gh.retryTransient({ times: 2 }));
+```
+
+`isRateLimited(error)` and `httpStatus(error)` expose the same classification
+for consumers mapping `GhError` into their own errors.
+
+### Rate limits
+
+`RateLimit.get(resource?, options?)` reads the `core` (default), `graphql` or
+`search` quota from `gh api rate_limit`, which does not count against it.
+`RateLimit.cached(timeToLive, options?)` builds an Effect `Cache` of those reads
+keyed by resource. Failed reads are not kept, and `Cache.invalidate` forces a
+fresh read after a rate-limited failure.
 
 ## Repository and issues
 

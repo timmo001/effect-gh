@@ -113,6 +113,8 @@ test("nonzero exit follows both pipes and retains bounded trailing stderr", asyn
       if (!Predicate.isTagged(error, "GhCommandError"))
         throw new Error("Expected command failure");
       expect(error.exitCode).toBe(7);
+      expect(error.stdout).toBe("output");
+      expect(error.stdoutTruncated).toBe(false);
       expect(error.stderr).toHaveLength(65_536);
       expect(error.stderr.endsWith("end")).toBe(true);
       expect(error.stderrTruncated).toBe(true);
