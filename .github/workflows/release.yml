@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@a76c7b0547b8e4c16fdbbdb9d2ba3cbab144b168 # 20261002.1
+    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@f72d1eb6c310502499f5551d65ceca1e478eb266 # 20261003.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       node-version: ${{ needs.tools.outputs.node }}
@@ -44,7 +44,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@a76c7b0547b8e4c16fdbbdb9d2ba3cbab144b168 # 20261002.1
+    uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@f72d1eb6c310502499f5551d65ceca1e478eb266 # 20261003.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       check-command: bun run check && bun run build
