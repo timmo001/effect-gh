@@ -47,4 +47,4 @@ jobs:
     uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@82ee28374d3471231113dabc3dd436f65a47132f # 20261004.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
-      check-command: bun run check && bun run build
+      check-command: bun run --parallel --no-exit-on-error check build

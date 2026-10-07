@@ -26,14 +26,8 @@ jobs:
       - name: Set up mise
         uses: jdx/mise-action@5ac50f778e26fac95da98d50503682459e86d566
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Check
-        run: mise run check
-
-      - name: Build
-        run: mise run build
+      - name: Check and build
+        run: "mise run check ::: build"
 
   actionlint:
     uses: timmo001/workflows/.github/workflows/lint-actionlint.yml@82ee28374d3471231113dabc3dd436f65a47132f # 20261004.0

@@ -32,7 +32,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "check": "bun run lint && bun run typecheck && bun run format:check && bun run test",
+    "check": "bun run --parallel --no-exit-on-error lint typecheck format:check test",
     "lint": "oxlint .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "bun test",

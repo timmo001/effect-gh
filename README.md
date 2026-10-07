@@ -306,9 +306,7 @@ replacements for either existing service.
 Use the tool versions pinned in [mise.toml](mise.toml) and Bun for dependencies.
 
 ```sh
-mise run install
-mise run check
-mise run build
+mise run check ::: build
 ```
 
 ## Releases
