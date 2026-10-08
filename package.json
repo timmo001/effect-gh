@@ -1,6 +1,6 @@
 {
   "name": "@timmo001/effect-gh",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "An Effect v4 SDK for the GitHub CLI",
   "license": "Apache-2.0",
   "type": "module",
