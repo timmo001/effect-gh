@@ -45,7 +45,7 @@
     "effect": "4.0.2"
   },
   "devDependencies": {
-    "@effect/platform-node": "4.0.2",
+    "@effect/platform-node": "4.0.3",
     "@effect/tsgo": "0.51.1",
     "@oxlint/plugins": "1.87.0",
     "@timmo001/oxlint-rules": "0.5.0",
