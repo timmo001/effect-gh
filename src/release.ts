@@ -93,6 +93,12 @@ export interface CreateInput extends ReleaseSettings {
   readonly tag: string;
   /** Asset file paths to upload with the release. */
   readonly assets?: ReadonlyArray<string>;
+  /** Fail unless the tag already exists on the remote. */
+  readonly verifyTag?: boolean;
+  /** Generate notes from merged pull requests. */
+  readonly generateNotes?: boolean;
+  /** Start generated notes after this tag instead of the previous release. */
+  readonly notesStartTag?: string;
 }
 
 /** Create a release and return its URL. */
@@ -111,6 +117,11 @@ export const create = Effect.fn("Release.create")(function* (
       "--repo",
       input.repo,
       ...settingArgs(input),
+      ...(input.verifyTag ? ["--verify-tag"] : []),
+      ...(input.generateNotes ? ["--generate-notes"] : []),
+      ...(input.notesStartTag === undefined
+        ? []
+        : ["--notes-start-tag", input.notesStartTag]),
     ],
     options,
   );
