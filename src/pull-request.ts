@@ -34,6 +34,14 @@ export const Fields = Schema.Struct({
     }),
   ),
   labels: Schema.Array(Schema.Struct({ name: Schema.String })),
+  assignees: Schema.Array(Author),
+  mergedAt: Schema.NullOr(Schema.String),
+  autoMergeRequest: Schema.NullOr(
+    Schema.Struct({ mergeMethod: Schema.String }),
+  ),
+  commits: Schema.Array(
+    Schema.Struct({ oid: Schema.String, messageHeadline: Schema.String }),
+  ),
 });
 
 export interface Fields extends Schema.Schema.Type<typeof Fields> {}
