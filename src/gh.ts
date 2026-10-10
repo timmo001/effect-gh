@@ -12,6 +12,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import {
   GhCommandError,
   GhDecodeError,
+  GhOutputLimitError,
   GhPlatformError,
   GhTimeoutError,
   type GhError,
@@ -26,6 +27,8 @@ export interface GhOptions {
   readonly stdin?: string | Uint8Array | undefined;
   /** Total subprocess duration, including output draining. Null disables a layer timeout. */
   readonly timeout?: Duration.Input | null;
+  /** Stop the command with GhOutputLimitError once stdout passes this many bytes. */
+  readonly maxOutputBytes?: number;
 }
 
 export const GhOutput = Schema.Struct({
@@ -57,6 +60,14 @@ export interface Interface {
     args: ReadonlyArray<string>,
     options?: GhOptions,
   ) => Stream.Stream<GhChunk, GhError>;
+  /**
+   * Run with the terminal's stdin, stdout and stderr so gh and git can prompt.
+   * Output is not captured; a non-zero exit fails with GhCommandError.
+   */
+  readonly interactive: (
+    args: ReadonlyArray<string>,
+    options?: Omit<GhOptions, "stdin" | "maxOutputBytes">,
+  ) => Effect.Effect<void, GhError>;
 }
 
 export class Gh extends Context.Service<Gh, Interface>()(
@@ -142,6 +153,28 @@ export const layer = (
           ),
         );
 
+        const limitBytes = options.maxOutputBytes;
+
+        const limited =
+          limitBytes === undefined
+            ? output
+            : output.pipe(
+                Stream.mapAccumEffect(
+                  () => 0,
+                  (bytes, chunk) => {
+                    const total = Predicate.isTagged(chunk, "Stdout")
+                      ? bytes + new TextEncoder().encode(chunk.text).byteLength
+                      : bytes;
+
+                    return total > limitBytes
+                      ? Effect.fail(
+                          new GhOutputLimitError({ executable, limitBytes }),
+                        )
+                      : Effect.succeed([total, [chunk]] as const);
+                  },
+                ),
+              );
+
         const completion = Effect.gen(function* () {
           const exitCode = yield* handle.exitCode.pipe(
             Effect.mapError(
@@ -161,7 +194,7 @@ export const layer = (
           }
         });
 
-        const completed = output.pipe(
+        const completed = limited.pipe(
           Stream.concat(Stream.fromEffect(completion).pipe(Stream.drain)),
         );
 
@@ -244,6 +277,67 @@ export const layer = (
         ).pipe(Effect.mapError((cause) => new GhDecodeError({ cause })));
       });
 
-      return Gh.of({ execute, json, stream });
+      const interactive = Effect.fn("Gh.interactive")(function* (
+        args: ReadonlyArray<string>,
+        overrides?: Omit<GhOptions, "stdin" | "maxOutputBytes">,
+      ) {
+        const options = { ...defaults, ...overrides };
+        const executable = options.executable ?? "gh";
+
+        const run = Effect.scoped(
+          Effect.gen(function* () {
+            const handle = yield* spawner.spawn(
+              ChildProcess.make(executable, args, {
+                cwd: options.cwd,
+                env: { ...defaults.env, ...options.env },
+                extendEnv: true,
+                shell: false,
+                stdin: "inherit",
+                stdout: "inherit",
+                stderr: "inherit",
+                forceKillAfter: "1 second",
+              }),
+            );
+
+            return yield* handle.exitCode;
+          }),
+        ).pipe(
+          Effect.mapError(
+            (cause) => new GhPlatformError({ executable, cause }),
+          ),
+          Effect.flatMap((exitCode) =>
+            exitCode === 0
+              ? Effect.void
+              : Effect.fail(
+                  new GhCommandError({
+                    executable,
+                    exitCode,
+                    stdout: "",
+                    stdoutTruncated: false,
+                    stderr: "",
+                    stderrTruncated: false,
+                  }),
+                ),
+          ),
+        );
+
+        if (
+          options.timeout == null ||
+          !Duration.isFinite(Duration.fromInputUnsafe(options.timeout))
+        )
+          return yield* run;
+
+        const timeoutMs = Duration.toMillis(options.timeout);
+
+        return yield* run.pipe(
+          Effect.timeoutOrElse({
+            duration: options.timeout,
+            orElse: () =>
+              Effect.fail(new GhTimeoutError({ executable, timeoutMs })),
+          }),
+        );
+      });
+
+      return Gh.of({ execute, json, stream, interactive });
     }),
   );

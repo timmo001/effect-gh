@@ -27,5 +27,15 @@ export class GhDecodeError extends Schema.TaggedError<GhDecodeError>()(
   { cause: Schema.Defect() },
 ) {}
 
+/** Stdout grew past `GhOptions.maxOutputBytes`; the command was stopped. */
+export class GhOutputLimitError extends Schema.TaggedError<GhOutputLimitError>()(
+  "GhOutputLimitError",
+  { executable: Schema.String, limitBytes: Schema.Int },
+) {}
+
 export type GhError =
-  GhCommandError | GhPlatformError | GhTimeoutError | GhDecodeError;
+  | GhCommandError
+  | GhPlatformError
+  | GhTimeoutError
+  | GhDecodeError
+  | GhOutputLimitError;
