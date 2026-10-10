@@ -23,11 +23,15 @@ export type Field = keyof typeof Fields.fields;
 /** The selected fields of a release. */
 export type Selected<F extends ReadonlyArray<Field>> = Pick<Fields, F[number]>;
 
+/** `--repo` arguments; gh selects the working directory's repository without them. */
+const repoArgs = (repo: string | undefined) =>
+  repo === undefined ? [] : ["--repo", repo];
+
 /** View a release, or the latest release when `tag` is omitted, decoding exactly the selected fields. */
 export const view = Effect.fn("Release.view")(function* <
   const F extends ReadonlyArray<Field>,
 >(
-  input: { readonly repo: string; readonly tag?: string; readonly fields: F },
+  input: { readonly repo?: string; readonly tag?: string; readonly fields: F },
   options?: GhOptions,
 ) {
   const gh = yield* Gh;
@@ -37,8 +41,7 @@ export const view = Effect.fn("Release.view")(function* <
       "release",
       "view",
       ...(input.tag === undefined ? [] : [input.tag]),
-      "--repo",
-      input.repo,
+      ...repoArgs(input.repo),
       "--json",
       input.fields.join(","),
     ],
@@ -49,7 +52,7 @@ export const view = Effect.fn("Release.view")(function* <
 
 /** Whether a release exists for the tag. Other failures stay failures. */
 export const exists = Effect.fn("Release.exists")(function* (
-  input: { readonly repo: string; readonly tag: string },
+  input: { readonly repo?: string; readonly tag: string },
   options?: GhOptions,
 ) {
   return yield* view({ ...input, fields: ["tagName"] }, options).pipe(
@@ -89,7 +92,7 @@ const settingArgs = (settings: ReleaseSettings) => [
 
 /** Input for {@link create}. */
 export interface CreateInput extends ReleaseSettings {
-  readonly repo: string;
+  readonly repo?: string;
   readonly tag: string;
   /** Asset file paths to upload with the release. */
   readonly assets?: ReadonlyArray<string>;
@@ -114,8 +117,7 @@ export const create = Effect.fn("Release.create")(function* (
       "create",
       input.tag,
       ...(input.assets ?? []),
-      "--repo",
-      input.repo,
+      ...repoArgs(input.repo),
       ...settingArgs(input),
       ...(input.verifyTag ? ["--verify-tag"] : []),
       ...(input.generateNotes ? ["--generate-notes"] : []),
@@ -131,13 +133,19 @@ export const create = Effect.fn("Release.create")(function* (
 
 /** Change an existing release. */
 export const edit = Effect.fn("Release.edit")(function* (
-  input: ReleaseSettings & { readonly repo: string; readonly tag: string },
+  input: ReleaseSettings & { readonly repo?: string; readonly tag: string },
   options?: GhOptions,
 ) {
   const gh = yield* Gh;
 
   yield* gh.execute(
-    ["release", "edit", input.tag, "--repo", input.repo, ...settingArgs(input)],
+    [
+      "release",
+      "edit",
+      input.tag,
+      ...repoArgs(input.repo),
+      ...settingArgs(input),
+    ],
     options,
   );
 });
@@ -145,7 +153,7 @@ export const edit = Effect.fn("Release.edit")(function* (
 /** Upload assets to a release, replacing assets with the same name when `clobber` is set. */
 export const upload = Effect.fn("Release.upload")(function* (
   input: {
-    readonly repo: string;
+    readonly repo?: string;
     readonly tag: string;
     readonly assets: ReadonlyArray<string>;
     readonly clobber?: boolean;
@@ -160,8 +168,7 @@ export const upload = Effect.fn("Release.upload")(function* (
       "upload",
       input.tag,
       ...input.assets,
-      "--repo",
-      input.repo,
+      ...repoArgs(input.repo),
       ...(input.clobber ? ["--clobber"] : []),
     ],
     options,
@@ -171,7 +178,7 @@ export const upload = Effect.fn("Release.upload")(function* (
 /** Download release assets matching glob patterns into a directory. */
 export const download = Effect.fn("Release.download")(function* (
   input: {
-    readonly repo: string;
+    readonly repo?: string;
     readonly tag: string;
     readonly patterns: ReadonlyArray<string>;
     readonly directory: string;
@@ -185,8 +192,7 @@ export const download = Effect.fn("Release.download")(function* (
       "release",
       "download",
       input.tag,
-      "--repo",
-      input.repo,
+      ...repoArgs(input.repo),
       ...input.patterns.flatMap((pattern) => ["--pattern", pattern]),
       "--dir",
       input.directory,
