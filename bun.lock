@@ -8,7 +8,7 @@
         "@effect/platform-node": "4.0.2",
         "@effect/tsgo": "0.51.1",
         "@oxlint/plugins": "1.87.0",
-        "@timmo001/oxlint-rules": "0.6.0",
+        "@timmo001/oxlint-rules": "0.6.1",
         "@types/bun": "1.4.2",
         "effect": "4.0.2",
         "oxlint": "1.87.0",
@@ -107,7 +107,7 @@
 
     "@redis/time-series": ["@redis/time-series@6.3.0", "", { "peerDependencies": { "@redis/client": "^6.3.0" } }, "sha512-+fJOB8mN1z5WRakCJNh5lVdz1KqvHGSOistsKeitD24QsCtPwyRQXWC0iq6T/i/ubLE/YcguZqPm8F598MKk4A=="],
 
-    "@timmo001/oxlint-rules": ["@timmo001/oxlint-rules@0.6.0", "", { "peerDependencies": { "@oxlint/plugins": "1.87.0", "oxlint": "1.87.0" }, "bin": { "oxlint-rules": "dist/cli.js" } }, "sha512-7afojmnFm6xF47iSMhWD9K941gRbOiqDUZUXoNAXEZo7YpBufLna1e8jPU7ayglB4ueHGoWEXCNLvDyVNSWq3Q=="],
+    "@timmo001/oxlint-rules": ["@timmo001/oxlint-rules@0.6.1", "", { "peerDependencies": { "@oxlint/plugins": "1.87.0", "oxlint": "1.87.0" }, "bin": { "oxlint-rules": "dist/cli.js" } }, "sha512-9TX4SdAnhbhqPuCis75hGQ5qwC069DwcMKW36VmJkHZ10Wnk9iR1+6m7OWQMcZ0VywT0hvsfgkgKnKxq/ZZmjg=="],
 
     "@types/bun": ["@types/bun@1.4.2", "", { "dependencies": { "bun-types": "1.4.2" } }, "sha512-GimotNn7+ZV0uVArItBbriZsR1oNf0+WTzPkdcFrzShI7k2norL0uzEaJT8T33dWr7O/c9ZDuAFQrctKCi72oQ=="],
 
