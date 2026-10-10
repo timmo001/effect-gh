@@ -123,6 +123,47 @@ export const raw = Effect.fn("Api.raw")(function* (
   );
 });
 
+/** Runs a request whose response body is not needed, such as a 204 mutation. Never retries. */
+export const empty = Effect.fn("Api.empty")(function* (
+  request: Request,
+): Effect.fn.Return<void, GhError, Gh> {
+  yield* raw(request);
+});
+
+/** Returns the response body as text, for raw file contents and other non-JSON media types. Never retries. */
+export const text = Effect.fn("Api.text")(function* (
+  request: Request,
+): Effect.fn.Return<string, GhError, Gh> {
+  return (yield* raw(request)).stdout;
+});
+
+/** Returns the response headers with lower-cased names. Use method HEAD to skip the body. Never retries. */
+export const headers = Effect.fn("Api.headers")(function* (
+  request: Request,
+): Effect.fn.Return<Readonly<Record<string, string>>, GhError, Gh> {
+  const command = yield* prepare(request);
+  const gh = yield* Gh;
+
+  const output = yield* gh.execute(
+    [...command.args, "--include", "--", command.endpoint],
+    command.options,
+  );
+
+  const head = output.stdout.split(/\r?\n\r?\n/, 1)[0] ?? "";
+  const result: Record<string, string> = {};
+
+  for (const line of head.split(/\r?\n/).slice(1)) {
+    const separator = line.indexOf(":");
+
+    if (separator > 0)
+      result[line.slice(0, separator).trim().toLowerCase()] = line
+        .slice(separator + 1)
+        .trim();
+  }
+
+  return result;
+});
+
 /** Decodes one JSON response. Encoding and decoding failures are GhDecodeError; requests never retry. */
 export const json = Effect.fn("Api.json")(function* <
   S extends Schema.Constraint,
