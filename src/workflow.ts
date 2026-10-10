@@ -18,9 +18,29 @@ export const Run = Schema.Struct({
   conclusion: Schema.NullOr(Schema.String),
   url: Schema.String,
   workflowName: Schema.NullOr(Schema.String),
+  name: Schema.String,
+  event: Schema.String,
 });
 
 export interface Run extends Schema.Schema.Type<typeof Run> {}
+
+export const Job = Schema.Struct({
+  databaseId: positiveInteger,
+  name: Schema.String,
+  status: Schema.String,
+  conclusion: Schema.NullOr(Schema.String),
+  url: Schema.String,
+  steps: Schema.Array(
+    Schema.Struct({
+      name: Schema.String,
+      status: Schema.String,
+      conclusion: Schema.NullOr(Schema.String),
+      number: Schema.Int,
+    }),
+  ),
+});
+
+export interface Job extends Schema.Schema.Type<typeof Job> {}
 
 const fields = Object.keys(Run.fields).join(",");
 
@@ -167,6 +187,79 @@ export const logs = Effect.fn("Workflow.logs")(function* (
   if (query.job !== undefined) args.push("--job", String(query.job));
 
   return (yield* gh.execute(args, options)).stdout;
+});
+
+/** Jobs and their steps for the latest attempt, or an explicit attempt. */
+export const jobs = Effect.fn("Workflow.jobs")(function* (
+  input: ViewOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(viewOptions, input);
+  const gh = yield* Gh;
+
+  const args = [
+    "run",
+    "view",
+    String(query.runId),
+    "--repo",
+    query.repo,
+    "--json",
+    "jobs",
+  ];
+
+  if (query.attempt !== undefined)
+    args.push("--attempt", String(query.attempt));
+
+  return (yield* gh.json(
+    args,
+    Schema.Struct({ jobs: Schema.Array(Job) }),
+    options,
+  )).jobs;
+});
+
+const dispatchOptions = Schema.Struct({
+  repo: repository,
+  workflow: Schema.NonEmptyString,
+  ref: Schema.optionalKey(Schema.NonEmptyString),
+  inputs: Schema.optionalKey(Schema.Record(Schema.String, Schema.String)),
+});
+
+export interface DispatchOptions extends Schema.Schema.Type<
+  typeof dispatchOptions
+> {}
+
+/** Start a `workflow_dispatch` run of a workflow file name or ID. */
+export const dispatch = Effect.fn("Workflow.dispatch")(function* (
+  input: DispatchOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(dispatchOptions, input);
+  const gh = yield* Gh;
+  const args = ["workflow", "run", query.workflow, "--repo", query.repo];
+
+  if (query.ref !== undefined) args.push("--ref", query.ref);
+
+  for (const [name, value] of Object.entries(query.inputs ?? {}))
+    args.push("--raw-field", `${name}=${value}`);
+  yield* gh.execute(args, options);
+});
+
+const openOptions = Schema.Struct({ repo: repository, runId: positiveInteger });
+
+export interface OpenOptions extends Schema.Schema.Type<typeof openOptions> {}
+
+/** Open a run in the browser. */
+export const open = Effect.fn("Workflow.open")(function* (
+  input: OpenOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(openOptions, input);
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["run", "view", String(query.runId), "--repo", query.repo, "--web"],
+    options,
+  );
 });
 
 /**

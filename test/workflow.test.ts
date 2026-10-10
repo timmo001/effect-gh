@@ -12,7 +12,7 @@ import * as Workflow from "../src/workflow.js";
 import { fakeSpawner, textStream } from "./helpers.js";
 
 const fields =
-  "databaseId,attempt,headBranch,headSha,status,conclusion,url,workflowName";
+  "databaseId,attempt,headBranch,headSha,status,conclusion,url,workflowName,name,event";
 
 const run = {
   databaseId: 123,
@@ -23,6 +23,8 @@ const run = {
   conclusion: "",
   url: "https://github.com/owner/repo/actions/runs/123",
   workflowName: "Build",
+  name: "Build",
+  event: "push",
 };
 
 test("list is lazy and sends bounded branch and commit filters literally", async () => {
