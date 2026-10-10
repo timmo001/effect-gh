@@ -10,6 +10,7 @@ export {
 export {
   GhCommandError,
   GhDecodeError,
+  GhOutputLimitError,
   GhPlatformError,
   GhTimeoutError,
   type GhError,
@@ -34,3 +35,15 @@ export * as Issue from "./issue.js";
 export * as PullRequest from "./pull-request.js";
 
 export * as Workflow from "./workflow.js";
+
+export * as Auth from "./auth.js";
+
+export * as Cli from "./cli.js";
+
+export * as Extension from "./extension.js";
+
+export * as Label from "./label.js";
+
+export * as Release from "./release.js";
+
+export * as Search from "./search.js";
