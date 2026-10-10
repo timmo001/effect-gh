@@ -123,9 +123,17 @@ const program = Effect.gen(function* () {
   It drains both pipes concurrently with backpressure and preserves order within
   each pipe, with no ordering guarantee between pipes. Chunk boundaries are not
   line boundaries. Completion waits for both pipes and a successful exit.
+- `interactive(args, options?)` runs on the terminal's stdin, stdout and stderr,
+  without the SDK's prompt and colour overrides, so gh and git can show progress
+  and ask for credentials. Output is not captured; a nonzero exit fails with
+  `GhCommandError`.
+
+Prefer the typed operations below. Reach for the raw methods only for a command
+the SDK does not cover yet, and add a typed operation for it when it sticks.
 
 `GhOptions` accepts `executable` (default `gh`), `cwd`, `env`, `stdin` (string or
-`Uint8Array`) and `timeout` (an Effect duration). Call options override layer
+`Uint8Array`), `timeout` (an Effect duration) and `maxOutputBytes`, which stops a
+command with `GhOutputLimitError` once stdout passes that size. Call options override layer
 defaults; environment entries merge. `timeout: null` disables a layer timeout.
 Timeouts cover spawning, execution and output draining, rather than idle time.
 There is no timeout by default. Schema decoding runs after the subprocess timeout.
@@ -137,8 +145,8 @@ disables prompts, colour, forced TTY and spinners, and selects `cat` as the page
 Stdin is closed unless supplied explicitly. No operation is automatically retried.
 
 Errors are tagged `GhCommandError` (nonzero exit with exit code, stdout and
-stderr), `GhPlatformError` (spawn or pipe failure), `GhTimeoutError`, or
-`GhDecodeError` (invalid JSON or a schema mismatch). Command errors retain only
+stderr), `GhPlatformError` (spawn or pipe failure), `GhTimeoutError`,
+`GhOutputLimitError`, or `GhDecodeError` (invalid JSON or a schema mismatch). Command errors retain only
 the last 65,536 UTF-16 code units of each output and flag truncation with
 `stdoutTruncated` and `stderrTruncated`.
 The stream emits trailing output before reporting a nonzero exit.
@@ -150,9 +158,13 @@ interruptions rather than being converted into SDK errors.
 
 ## API requests
 
-`Api.raw(request)` returns buffered output, including empty or non-JSON responses.
-`Api.json(request, schema)` decodes one JSON response. Every request specifies a
-method, which the SDK passes explicitly to `gh api`.
+`Api.json(request, schema)` decodes one JSON response. `Api.empty(request)` runs
+a request whose body is not needed, such as a 204 mutation. `Api.text(request)`
+returns the body as text, for raw file contents and other non-JSON media types.
+`Api.headers(request)` returns the response headers with lower-cased names; use
+method `HEAD` to skip the body. `Api.raw(request)` returns the buffered output
+and exit code. Every request specifies a method, which the SDK passes
+explicitly to `gh api`.
 
 ```ts
 import { Api } from "@timmo001/effect-gh";
@@ -163,7 +175,7 @@ const viewer = Api.json(
   Schema.Struct({ login: Schema.String }),
 );
 
-const subscription = Api.raw({
+const subscription = Api.empty({
   endpoint: "notifications/threads/123/subscription",
   method: "PUT",
   body: { ignored: true },
@@ -214,7 +226,10 @@ for consumers mapping `GhError` into their own errors.
 `search` quota from `gh api rate_limit`, which does not count against it.
 `RateLimit.cached(timeToLive, options?)` builds an Effect `Cache` of those reads
 keyed by resource. Failed reads are not kept, and `Cache.invalidate` forces a
-fresh read after a rate-limited failure.
+fresh read after a rate-limited failure. `RateLimit.guard(cache, options?)`
+checks that cache before a request: once remaining requests drop to
+`minRemaining` (default 0) it sleeps until the reset when that is within
+`maxWait` (default 60 seconds), and otherwise fails with `RateLimitExhausted`.
 
 ## Repository and issues
 
@@ -232,6 +247,15 @@ context. Issue list/view also accept an optional `repo`, plus core execution
 options as their final argument. Lists default to 30 open issues, and support
 state, limit, labels, assignee and search filters. `Issue.view` includes the body.
 Invalid numeric limits and selectors fail with `IssueInvalidInput` before spawning.
+
+`Issue.get` and `Issue.query` take a `fields` tuple, such as
+`["number", "body", "labels", "comments"]`, and decode exactly those fields.
+`Issue.create` returns the new issue's URL; `edit`, `comment` and `close` cover
+the common mutations.
+
+`Repository.clone` captures output, so pass non-interactive git settings in
+`env`. `Repository.cloneInteractive` clones on the terminal. Both accept extra
+`gitArgs`. `Repository.browse` opens a repository or one of its sections.
 
 ## Pull requests
 
@@ -254,6 +278,12 @@ List/view return number, title, URL, state, draft status, head branch and head S
 from exits 0, 1 and 8 is data with status `success`, `failure` or `pending`.
 Genuine command failures retain their typed error; no command is re-executed to
 retrieve its output.
+
+`PullRequest.get` and `PullRequest.query` take a `fields` tuple and decode
+exactly those fields, including body, author, merge state, review decision,
+comments, reviews and labels. `get` defaults to the working directory's current
+branch and repository. `create` returns the URL; `edit`, `merge` (now or
+`auto`), `disableAutoMerge` and `diff` cover the rest.
 
 ## Workflow runs
 
@@ -286,6 +316,24 @@ interval, fails when the run fails and inherits the core timeout. It requires a
 gh version with `--compact` support; gh watch does not support fine-grained PATs.
 Use REST page schemas through `Api` when a consumer needs snake_case fields,
 page envelopes or attempt-specific jobs.
+
+`Workflow.jobs` returns a run's jobs and steps. `Workflow.dispatch` starts a
+`workflow_dispatch` run with an optional ref and string inputs, and
+`Workflow.open` opens a run in the browser.
+
+## Auth, extensions, labels, releases and search
+
+- `Auth.status(hostname?)` and `Auth.hasToken(hostname?)` return booleans.
+  `hasToken` drains the token without keeping it. `Auth.scopes(hostname?)`
+  returns the classic OAuth scopes from the `x-oauth-scopes` header, or `None`
+  for fine-grained tokens.
+- `Extension.list` parses `gh extension list` into name, repository and version.
+  `Extension.install` and `Extension.upgradeAll` accept `{ interactive: true }`.
+- `Label.create` (with `force` to update) and `Label.remove`.
+- `Release.view` decodes selected fields, `Release.exists` checks a tag, and
+  `create`, `edit`, `upload` and `download` cover publishing.
+- `Search.code` returns matching paths with their repositories.
+- `Cli.version` returns the installed gh version.
 
 ## Consumer examples
 
