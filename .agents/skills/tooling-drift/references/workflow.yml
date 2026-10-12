@@ -1,0 +1,29 @@
+---
+name: Tooling drift
+
+# Compares the tool releases recorded in tooling.yml with each repository's
+# latest release and opens one pull request per tool that moved. See the
+# tooling-drift skill.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tooling-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    if: github.repository == 'owner/name'
+    uses: timmo001/workflows/.github/workflows/tooling-drift.yml@<sha> # <tag>
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    secrets:
+      token: ${{ secrets.TOOLING_DRIFT_TOKEN }}

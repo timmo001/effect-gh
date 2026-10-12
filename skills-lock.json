@@ -50,6 +50,13 @@
       "skillPath": "testing/SKILL.md",
       "computedHash": "6172813610101738077bfa2dfaa927349b78d1e1a265473ad31dc4beb7e9047e"
     },
+    "tooling-drift": {
+      "source": "timmo001/tooling-drift",
+      "ref": "72f5ef6204a6a77b2a8c09e294323e042fb68ec1",
+      "sourceType": "github",
+      "skillPath": "skills/tooling-drift/SKILL.md",
+      "computedHash": "b2b62843a59dd63d16d11c3a328daf21552fceb539e7455f0e0c9da247d52620"
+    },
     "types-enforce-ts": {
       "source": "timmo001/skills",
       "ref": "332f6d26c666c444aff48eaa75aeb920dd3b05ea",
