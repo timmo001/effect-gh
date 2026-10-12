@@ -24,7 +24,7 @@ FLAGS
   -L, --limit int          Maximum number of code results to fetch (default 30)
       --match strings      Restrict search to file contents or file path: {file|path}
       --owner strings      Filter on owner
-  -R, --repo strings       Filter on repository
+  -R, --repo OWNER/REPO    Filter on repository, in OWNER/REPO format
       --size string        Filter on size range, in kilobytes
   -t, --template string    Format JSON output using a Go template; see "gh help formatting"
   -w, --web                Open the search query in the web browser
@@ -41,6 +41,9 @@ EXAMPLES
   
   # Search code matching "error handling"
   $ gh search code "error handling"
+  
+  # Search code using raw search qualifiers as separate arguments
+  $ gh search code panic path:pkg language:go
   
   # Search code matching "deque" in Python files
   $ gh search code deque --language=python

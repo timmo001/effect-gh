@@ -83,6 +83,7 @@ test("raw sends an explicit method, JSON stdin, literal headers and inherited Gh
         "--header=X-Value: --jq .",
         "--input",
         "-",
+        "--allow-escape-sequences",
         "--",
         "repos/{owner}/{repo}/issues?title=%40private-file",
       ]);
@@ -115,6 +116,7 @@ test.each([...Api.Method.literals])(
           "api",
           "--method",
           method,
+          "--allow-escape-sequences",
           "--",
           "repos/o/r",
         ]);
@@ -149,6 +151,7 @@ test.each([
         "api",
         "--method",
         "GET",
+        "--allow-escape-sequences",
         "--",
         `${prefix}q%26x=%40file%20%7Bowner%7D%20%2B%26%3D%23%20%E4%B8%96%E7%95%8C&labels=true&labels=null&page=2&archived=false`,
       ]);
@@ -169,6 +172,7 @@ test("query is inserted before fragments and empty arrays add no parameters", as
         "api",
         "--method",
         "GET",
+        "--allow-escape-sequences",
         "--",
         "search/issues?existing=1&q=x#fragment?",
       ]);

@@ -9,8 +9,10 @@ Inspired by the Effect-native API in
 
 - Effect matching `peerDependencies.effect` in [package.json](package.json), with
   a compatible consumer-chosen platform adapter.
-- GitHub CLI installed and authenticated through `gh auth login` or its standard
-  token environment variables.
+- GitHub CLI 2.97.0 or later, installed and authenticated through `gh auth login`
+  or its standard token environment variables. `Api.raw`, `Api.text`,
+  `Api.empty` and `PullRequest.diff` pass `--allow-escape-sequences`, which
+  older releases reject.
 - An ESM consumer. Bun runs the TypeScript source directly; Node uses the compiled
   JavaScript in a built package. The platform adapter stays a consumer dependency.
 
@@ -165,7 +167,9 @@ returns the body as text, for raw file contents and other non-JSON media types.
 `Api.headers(request)` returns the response headers with lower-cased names; use
 method `HEAD` to skip the body. `Api.raw(request)` returns the buffered output
 and exit code. Every request specifies a method, which the SDK passes
-explicitly to `gh api`.
+explicitly to `gh api`. `raw`, `text` and `empty` return non-JSON bodies
+verbatim, including terminal escape sequences that piped gh would otherwise
+refuse; gh sanitises JSON responses either way.
 
 ```ts
 import { Api } from "@timmo001/effect-gh";
@@ -284,7 +288,8 @@ retrieve its output.
 exactly those fields, including body, author, merge state, review decision,
 comments, reviews and labels. `get` defaults to the working directory's current
 branch and repository. `create` returns the URL; `edit`, `merge` (now or
-`auto`), `disableAutoMerge` and `diff` cover the rest.
+`auto`), `disableAutoMerge` and `diff` cover the rest. `diff` returns the patch
+verbatim, escape sequences included.
 
 ## Workflow runs
 

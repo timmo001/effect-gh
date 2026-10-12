@@ -110,7 +110,7 @@ const prepare = Effect.fn("Api.prepare")(function* (request: Request) {
   return { args, endpoint, options: { ...request.options, stdin } };
 });
 
-/** Returns stdout, stderr and the CLI exit code, including empty or non-JSON responses. Never retries. */
+/** Returns stdout, stderr and the CLI exit code, including empty or non-JSON responses verbatim. Needs gh 2.97.0 or later. Never retries. */
 export const raw = Effect.fn("Api.raw")(function* (
   request: Request,
 ): Effect.fn.Return<GhOutput, GhError, Gh> {
@@ -118,7 +118,8 @@ export const raw = Effect.fn("Api.raw")(function* (
   const gh = yield* Gh;
 
   return yield* gh.execute(
-    [...command.args, "--", command.endpoint],
+    // Piped gh refuses a non-JSON body carrying escape sequences without this.
+    [...command.args, "--allow-escape-sequences", "--", command.endpoint],
     command.options,
   );
 });

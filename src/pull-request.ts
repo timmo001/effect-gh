@@ -381,7 +381,7 @@ export const disableAutoMerge = Effect.fn("PullRequest.disableAutoMerge")(
   },
 );
 
-/** The pull request's unified diff. */
+/** The pull request's unified diff, verbatim. Needs gh 2.97.0 or later. */
 export const diff = Effect.fn("PullRequest.diff")(function* (
   selector: number | string,
   options: Options,
@@ -394,6 +394,8 @@ export const diff = Effect.fn("PullRequest.diff")(function* (
       "diff",
       `--repo=${options.repository}`,
       "--color=never",
+      // Piped gh refuses a diff carrying escape sequences without this.
+      "--allow-escape-sequences",
       "--",
       String(selector),
     ],
