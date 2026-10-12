@@ -1,5 +1,6 @@
 node_modules/
 dist/
 bun.lock
+.mise/locks/
 LICENSE
 .agents/skills/
