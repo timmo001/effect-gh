@@ -1,0 +1,59 @@
+---
+name: Tooling drift
+
+# Compares the gh release recorded in tooling.yml with the latest cli/cli
+# release. When it moves, regenerates the gh contract snapshot at that release
+# and opens one pull request for it: "[Pin-only] Update cli/cli to <tag>" with
+# squash auto-merge when only the pin moves, or "Update cli/cli to <tag>" for
+# review when the snapshot changed.
+
+on:
+  schedule:
+    - cron: "23 6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tooling-drift
+  cancel-in-progress: false
+
+jobs:
+  drift:
+    name: Open tooling drift pull request
+    if: github.repository == 'timmo001/effect-gh'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    env:
+      # A fine-grained token with contents, pull requests and actions write
+      # access lets the pull request trigger CI itself; the default token
+      # cannot, so CI is dispatched on the branch instead.
+      GH_TOKEN: ${{ secrets.TOOLING_DRIFT_TOKEN || github.token }}
+      TOOLING_DRIFT_DISPATCH_CI: ${{ secrets.TOOLING_DRIFT_TOKEN == '' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.TOOLING_DRIFT_TOKEN || github.token }}
+
+      - name: Set up mise
+        uses: jdx/mise-action@5ac50f778e26fac95da98d50503682459e86d566
+
+      - name: Compare with the latest release
+        id: release
+        run: scripts/tooling-drift.sh status | tee -a "$GITHUB_OUTPUT"
+
+      - name: Refresh the gh contract at the release
+        if: steps.release.outputs.behind == 'true'
+        run: mise run tooling:update "${{ steps.release.outputs.latest }}"
+
+      - name: Open or update the pull request
+        if: steps.release.outputs.behind == 'true'
+        run: scripts/tooling-drift.sh publish "${{ steps.release.outputs.latest }}"

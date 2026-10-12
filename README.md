@@ -357,6 +357,24 @@ Use the tool versions pinned in [mise.toml](mise.toml) and Bun for dependencies.
 mise run check ::: build
 ```
 
+### Tooling drift
+
+[tooling.yml](tooling.yml) records the gh release the SDK was last reviewed
+against, and [tooling/gh](tooling/gh) holds a snapshot of the help and `--json`
+fields of every wrapped command at that release. The daily **Tooling drift**
+workflow compares the reviewed release with the latest
+[cli/cli](https://github.com/cli/cli/releases) release. When it moves, the
+workflow regenerates the snapshot at the new release and opens one pull request
+for it: `[Pin-only] Update cli/cli to <tag>` with squash auto-merge when the
+snapshot is unchanged, or `Update cli/cli to <tag>` for review when a flag or
+field changed. Review that diff against the wrappers in `src/` before merging.
+
+Run the same update by hand with `mise run tooling:update <tag>`, which
+downloads that gh release, regenerates the snapshot and records the tag;
+`mise run tooling:status` prints whether a newer release exists. Add a command
+to the list in [scripts/gh-contract.ts](scripts/gh-contract.ts) when the SDK
+starts wrapping it.
+
 ## Releases
 
 To inspect the package locally, run `mise exec -- npm pack --dry-run`; the pack

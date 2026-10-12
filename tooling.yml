@@ -1,0 +1,7 @@
+---
+# Tool releases this SDK was last reviewed against. The tooling drift
+# workflow compares each with the repository's latest release and opens a
+# pull request when it moves. Update it with `mise run tooling:update <tag>`.
+tools:
+  - repo: cli/cli
+    reviewed: v2.89.0
