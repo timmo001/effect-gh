@@ -68,7 +68,7 @@ const parseOptions = (args: readonly string[]): Options | undefined => {
   let output = "tooling/gh";
 
   for (let index = 0; index < args.length; index += 2) {
-    const value = args[index + 1];
+    const value = args.at(index + 1);
 
     if (value === undefined) return undefined;
 
