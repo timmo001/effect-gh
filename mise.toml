@@ -49,4 +49,4 @@ run = "scripts/tooling-drift.sh status"
 [tasks."tooling:update"]
 description = "Refresh the gh contract snapshot at a cli/cli release and record it in tooling.yml"
 depends = ["install"]
-run = 'scripts/tooling-update.sh {{arg(name="tag")}}'
+run = 'scripts/tooling-drift.sh update cli/cli {{arg(name="tag")}}'

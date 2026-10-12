@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Refresh the gh contract snapshot at a cli/cli release and record that
-# release as reviewed in tooling.yml. Needs gh for the release download.
+# Refresh the gh contract snapshot at a cli/cli release. Needs gh for the
+# release download. `scripts/tooling-drift.sh update cli/cli <tag>` runs it,
+# then records the tag in tooling.yml.
 #
 #   scripts/tooling-update.sh <tag>
 set -euo pipefail
@@ -39,8 +40,3 @@ if [ -z "$executable" ]; then
 fi
 
 bun scripts/gh-contract.ts --gh "$executable"
-
-sed -i.bak "s|^\( *reviewed: *\).*\$|\1$tag|" tooling.yml
-rm tooling.yml.bak
-
-echo "Reviewed cli/cli at $tag"
