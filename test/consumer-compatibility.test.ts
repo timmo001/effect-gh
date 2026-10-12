@@ -137,6 +137,7 @@ test.each([
           "api",
           "--method",
           method,
+          "--allow-escape-sequences",
           "--",
           "notifications/threads/thread%2F123",
         ]);
@@ -176,6 +177,7 @@ test.each([true, false])(
           "PUT",
           "--input",
           "-",
+          "--allow-escape-sequences",
           "--",
           "notifications/threads/123/subscription",
         ]);
