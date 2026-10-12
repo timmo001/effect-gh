@@ -54,10 +54,8 @@ run = 'bun scripts/gh-contract.ts --release {{arg(name="tag")}}'
 
 [tasks."tooling:update"]
 description = "Refresh the gh contract snapshot at a cli/cli release and record it in tooling.yml"
-depends = ["install"]
 run = 'tooling-drift update cli/cli {{arg(name="tag")}}'
 
 [tasks."tooling:publish"]
 description = "Open or refresh a pull request when a newer gh release is out"
-depends = ["install"]
 run = "tooling-drift publish"
