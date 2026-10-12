@@ -362,20 +362,23 @@ mise run check ::: build
 [tooling.yml](tooling.yml) records the gh release the SDK was last reviewed
 against, and [tooling/gh](tooling/gh) holds a snapshot of the help and `--json`
 fields of every wrapped command at that release. The daily **Tooling drift**
-workflow runs [scripts/tooling-drift.sh](scripts/tooling-drift.sh), a copy of
-the one in the `tooling-drift` skill, which compares the reviewed release with
-the latest [cli/cli](https://github.com/cli/cli/releases) release. When it
-moves, the script regenerates the snapshot at the new release and opens one
-pull request: `[Pin-only] Update cli/cli to <tag>` with squash auto-merge when
-the snapshot is unchanged, or `Update cli/cli to <tag>` for review when a flag
-or field changed. Review that diff against the wrappers in `src/` before
-merging; a change here may also need one in the repositories that use the SDK.
+workflow runs `mise run tooling:publish`, the
+[tooling-drift](https://github.com/timmo001/tooling-drift) tool pinned in
+[mise.toml](mise.toml). It compares the reviewed release with the latest
+[cli/cli](https://github.com/cli/cli/releases) release and, when it moves, runs
+`mise run tooling:refresh <tag>` to regenerate the snapshot from that release,
+then opens one pull request: `[Pin-only] Update cli/cli to <tag>` with squash
+auto-merge when the snapshot is unchanged, or `Update cli/cli to <tag>` for
+review when a flag or field changed. Review that diff against the wrappers in
+`src/` before merging; a change here may also need one in the repositories that
+use the SDK.
 
 Run the same update by hand with `mise run tooling:update <tag>`, which
-downloads that gh release, regenerates the snapshot and records the tag;
-`mise run tooling:status` prints whether a newer release exists. Add a command
-to the list in [scripts/gh-contract.ts](scripts/gh-contract.ts) when the SDK
-starts wrapping it.
+downloads that gh release through
+[scripts/gh-contract.ts](scripts/gh-contract.ts), regenerates the snapshot and
+records the tag; `mise run tooling:status` prints whether a newer release
+exists. Add a command to the list in that script when the SDK starts wrapping
+it.
 
 ## Releases
 

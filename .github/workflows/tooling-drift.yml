@@ -1,11 +1,8 @@
 ---
 name: Tooling drift
 
-# Compares the gh release recorded in tooling.yml with the latest cli/cli
-# release and opens one pull request when it moves: "[Pin-only] Update
-# cli/cli to <tag>" with squash auto-merge when the snapshot under tooling/gh
-# is unchanged, or "Update cli/cli to <tag>" for review when it changed. See
-# the tooling-drift skill and scripts/tooling-drift.sh.
+# Opens one pull request when a gh release newer than the one recorded in
+# tooling.yml is out, through the tooling-drift tool pinned in mise.toml.
 
 on:
   schedule:
@@ -21,33 +18,13 @@ concurrency:
 
 jobs:
   drift:
-    name: Open tooling drift pull requests
     if: github.repository == 'timmo001/effect-gh'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    uses: timmo001/workflows/.github/workflows/tooling-drift.yml@dc203e1f5a4d5757255bd47ee725c0af81621338 # tooling-drift
     permissions:
       actions: write
       contents: write
       pull-requests: write
-    env:
-      # A fine-grained token with contents, pull requests and actions write
-      # access lets the pull requests trigger CI themselves; the default token
-      # cannot, so CI is dispatched on each branch instead.
-      GH_TOKEN: ${{ secrets.TOOLING_DRIFT_TOKEN || github.token }}
-      TOOLING_DRIFT_DISPATCH: ${{ secrets.TOOLING_DRIFT_TOKEN == '' && 'ci.yml' || '' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event.repository.default_branch }}
-          fetch-depth: 0
-          token: ${{ secrets.TOOLING_DRIFT_TOKEN || github.token }}
-
-      - name: Set up mise
-        uses: jdx/mise-action@5ac50f778e26fac95da98d50503682459e86d566
-
-      - name: Install dependencies
-        run: mise run install
-
-      - name: Open or refresh pull requests
-        run: scripts/tooling-drift.sh publish
+    with:
+      install: true
+    secrets:
+      token: ${{ secrets.TOOLING_DRIFT_TOKEN }}

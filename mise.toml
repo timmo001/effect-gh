@@ -3,6 +3,7 @@ min_version = "2025.1.0"
 [tools]
 node = "26.11.1"
 bun = "1.4.3"
+"npm:@timmo001/tooling-drift" = "0.1.0"
 
 [tasks.install]
 description = "Install dependencies"
@@ -44,9 +45,19 @@ run = "bun run build"
 
 [tasks."tooling:status"]
 description = "Compare the reviewed gh release in tooling.yml with the latest cli/cli release"
-run = "scripts/tooling-drift.sh status"
+run = "tooling-drift status"
+
+[tasks."tooling:refresh"]
+description = "Regenerate the gh contract snapshot under tooling/gh from a cli/cli release"
+depends = ["install"]
+run = 'bun scripts/gh-contract.ts --release {{arg(name="tag")}}'
 
 [tasks."tooling:update"]
 description = "Refresh the gh contract snapshot at a cli/cli release and record it in tooling.yml"
 depends = ["install"]
-run = 'scripts/tooling-drift.sh update cli/cli {{arg(name="tag")}}'
+run = 'tooling-drift update cli/cli {{arg(name="tag")}}'
+
+[tasks."tooling:publish"]
+description = "Open or refresh a pull request when a newer gh release is out"
+depends = ["install"]
+run = "tooling-drift publish"

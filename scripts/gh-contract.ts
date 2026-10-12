@@ -1,12 +1,15 @@
 import { NodeServices } from "@effect/platform-node";
-import { Effect, FileSystem, Layer, Path } from "effect";
-import { Gh, layer } from "../src/index.js";
+import { Effect, FileSystem, Layer, Match, Path, Schema } from "effect";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { Gh, Release, layer } from "../src/index.js";
 
 /**
  * Snapshot the parts of gh this SDK relies on: the help of every wrapped
  * command and the `--json` fields of those that select fields. The tooling
  * drift workflow regenerates the snapshot at each gh release so a changed
- * flag or field shows up as a diff under `tooling/gh`.
+ * flag or field shows up as a diff under `tooling/gh`. `--release <tag>`
+ * downloads that cli/cli release and snapshots its gh; `--gh <executable>`
+ * snapshots an installed one.
  */
 interface Command {
   readonly name: string;
@@ -51,15 +54,17 @@ const commands: readonly Command[] = [
 ];
 
 const usage =
-  "Usage: bun scripts/gh-contract.ts [--gh <executable>] [--output <directory>]";
+  "Usage: bun scripts/gh-contract.ts [--release <tag> | --gh <executable>] [--output <directory>]";
 
 interface Options {
   readonly executable: string;
+  readonly release: string | undefined;
   readonly output: string;
 }
 
 const parseOptions = (args: readonly string[]): Options | undefined => {
   let executable = "gh";
+  let release: string | undefined;
   let output = "tooling/gh";
 
   for (let index = 0; index < args.length; index += 2) {
@@ -71,6 +76,9 @@ const parseOptions = (args: readonly string[]): Options | undefined => {
       case "--gh":
         executable = value;
         break;
+      case "--release":
+        release = value;
+        break;
       case "--output":
         output = value;
         break;
@@ -79,8 +87,80 @@ const parseOptions = (args: readonly string[]): Options | undefined => {
     }
   }
 
-  return { executable, output };
+  return { executable, release, output };
 };
+
+class ReleaseAssetError extends Schema.TaggedError<ReleaseAssetError>()(
+  "ReleaseAssetError",
+  { message: Schema.String },
+) {}
+
+/** The gh release asset for this machine, and the path of gh inside it. */
+const releaseAsset = (tag: string) => {
+  const version = tag.replace(/^v/, "");
+
+  const platform = Match.value(process.platform).pipe(
+    Match.when("linux", () => "linux" as const),
+    Match.when("darwin", () => "macOS" as const),
+    Match.orElse(() => undefined),
+  );
+
+  const architecture = Match.value(process.arch).pipe(
+    Match.when("x64", () => "amd64" as const),
+    Match.when("arm64", () => "arm64" as const),
+    Match.orElse(() => undefined),
+  );
+
+  if (platform === undefined || architecture === undefined) return undefined;
+
+  const directory = `gh_${version}_${platform}_${architecture}`;
+
+  return {
+    asset: `${directory}.${platform === "linux" ? "tar.gz" : "zip"}`,
+    executable: `${directory}/bin/gh`,
+  };
+};
+
+/** Download a cli/cli release into a scoped temporary directory and return its gh. */
+const downloadRelease = Effect.fn("GhContract.downloadRelease")(function* (
+  tag: string,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
+  const target = releaseAsset(tag);
+
+  if (target === undefined)
+    return yield* new ReleaseAssetError({
+      message: `No gh release asset for ${process.platform} ${process.arch}`,
+    });
+
+  const directory = yield* fs.makeTempDirectoryScoped({
+    prefix: "gh-contract-",
+  });
+
+  yield* Release.download({
+    repo: "cli/cli",
+    tag,
+    patterns: [target.asset],
+    directory,
+  });
+
+  const archive = path.join(directory, target.asset);
+
+  const extract = target.asset.endsWith(".zip")
+    ? ChildProcess.make("unzip", ["-q", archive, "-d", directory])
+    : ChildProcess.make("tar", ["-xzf", archive, "-C", directory]);
+
+  const code = yield* spawner.exitCode(extract);
+
+  if (Number(code) !== 0)
+    return yield* new ReleaseAssetError({
+      message: `Could not extract ${target.asset} (exit code ${code})`,
+    });
+
+  return path.join(directory, target.executable);
+});
 
 /** Help exits zero; a bare `--json` lists the fields on stderr and exits one. */
 const capture = Effect.fn("GhContract.capture")(function* (
@@ -116,6 +196,7 @@ const snapshot = Effect.fn("GhContract.snapshot")(function* (command: Command) {
 
 const writeSnapshots = Effect.fn("GhContract.write")(function* (
   options: Options,
+  executable: string,
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -124,7 +205,15 @@ const writeSnapshots = Effect.fn("GhContract.write")(function* (
 
   for (const command of commands) {
     const file = path.join(options.output, `${command.name}.txt`);
-    yield* fs.writeFileString(file, yield* snapshot(command));
+
+    yield* fs.writeFileString(
+      file,
+      yield* snapshot(command).pipe(
+        Effect.provide(
+          ghLayer(executable).pipe(Layer.provide(NodeServices.layer)),
+        ),
+      ),
+    );
   }
 
   yield* Effect.log(
@@ -140,19 +229,32 @@ if (options === undefined) {
 }
 
 // Help output must not depend on the runner's gh configuration or terminal.
-const ghLayer = layer({
-  executable: options.executable,
-  timeout: "30 seconds",
-  env: {
-    GH_CONFIG_DIR: `${process.env.TMPDIR ?? "/tmp"}/gh-contract-config`,
-    GH_NO_UPDATE_NOTIFIER: "1",
-    GH_PROMPT_DISABLED: "1",
-    GH_PAGER: "cat",
-    NO_COLOR: "1",
-    TERM: "dumb",
-  },
-}).pipe(Layer.provide(NodeServices.layer));
+const ghLayer = (executable: string) =>
+  layer({
+    executable,
+    timeout: "30 seconds",
+    env: {
+      GH_CONFIG_DIR: `${process.env.TMPDIR ?? "/tmp"}/gh-contract-config`,
+      GH_NO_UPDATE_NOTIFIER: "1",
+      GH_PROMPT_DISABLED: "1",
+      GH_PAGER: "cat",
+      NO_COLOR: "1",
+      TERM: "dumb",
+    },
+  });
+
+const program = Effect.gen(function* () {
+  const executable =
+    options.release === undefined
+      ? options.executable
+      : yield* downloadRelease(options.release).pipe(
+          // The download runs through the installed, authenticated gh.
+          Effect.provide(layer().pipe(Layer.provide(NodeServices.layer))),
+        );
+
+  yield* writeSnapshots(options, executable);
+});
 
 await Effect.runPromise(
-  writeSnapshots(options).pipe(Effect.provide([ghLayer, NodeServices.layer])),
+  program.pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 );
