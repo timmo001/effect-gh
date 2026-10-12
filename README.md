@@ -146,7 +146,8 @@ Stdin is closed unless supplied explicitly. No operation is automatically retrie
 
 Errors are tagged `GhCommandError` (nonzero exit with exit code, stdout and
 stderr), `GhPlatformError` (spawn or pipe failure), `GhTimeoutError`,
-`GhOutputLimitError`, or `GhDecodeError` (invalid JSON or a schema mismatch). Command errors retain only
+`GhOutputLimitError`, `GhDecodeError` (invalid JSON or a schema mismatch), or
+`GhInvalidOptionsError` (operation options rejected before spawning). Command errors retain only
 the last 65,536 UTF-16 code units of each output and flag truncation with
 `stdoutTruncated` and `stderrTruncated`.
 The stream emits trailing output before reporting a nonzero exit.
@@ -308,7 +309,7 @@ Workflow operations require `repo` and accept core options as a final argument.
 Lists default to at most 20 runs, with branch, commit, workflow and status filters.
 Run data uses gh's camelCase JSON fields, including `databaseId` and `attempt`.
 Log retrieval supports an explicit attempt and job, and returns buffered text.
-Invalid selectors and numeric options fail with `WorkflowInvalidOptions`.
+Invalid selectors and numeric options fail with `GhInvalidOptionsError`.
 
 `Workflow.watch` emits core stdout/stderr chunks using
 `gh run watch --compact --exit-status`. It defaults to a three-second refresh

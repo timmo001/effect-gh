@@ -33,9 +33,16 @@ export class GhOutputLimitError extends Schema.TaggedError<GhOutputLimitError>()
   { executable: Schema.String, limitBytes: Schema.Int },
 ) {}
 
+/** Operation options failed schema validation before any command was spawned. */
+export class GhInvalidOptionsError extends Schema.TaggedError<GhInvalidOptionsError>()(
+  "GhInvalidOptionsError",
+  { cause: Schema.Defect() },
+) {}
+
 export type GhError =
   | GhCommandError
   | GhPlatformError
   | GhTimeoutError
   | GhDecodeError
-  | GhOutputLimitError;
+  | GhOutputLimitError
+  | GhInvalidOptionsError;
