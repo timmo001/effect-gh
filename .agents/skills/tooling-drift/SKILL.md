@@ -23,10 +23,10 @@ Two kinds of tool entry:
   bundles Herdr's API schema and regenerates wire types). The CLI runs it at
   the new release. Nothing but the pins changed: `[Pin-only] Update <repo> to
 <tag>`, squash auto-merge. Anything else changed: `Update <repo> to <tag>`,
-  for review.
+  a draft for review.
 - Without one, the repository depends on the tool's behaviour (dotfiles' Herdr
   and Omarchy configuration and custom plugins). Every release gets `Update
-<repo> to <tag>` for review.
+<repo> to <tag>` as a draft for review.
 
 The skills repository tracks tool releases per skill through `skills.yml` and
 `skill-reviews` instead; `check-skill-updates` owns that.
@@ -60,6 +60,9 @@ release and exits non-zero when one is behind. Without the tool, compare
    pull request on `tooling/<owner>-<repo>` with `mise run tooling:publish`;
    when it already opened one, push the review changes to that branch and
    merge there. Commit and push only when asked.
+6. Once the review is done and CI passes, mark the draft ready with
+   `gh pr ready <number>`. A review pull request opened before drafts, or
+   one that turned from pin-only into a review, may already be ready.
 
 ## Adopt in a repository
 
@@ -81,7 +84,15 @@ release and exits non-zero when one is behind. Without the tool, compare
    the workflows under `dispatch`; a `TOOLING_DRIFT_TOKEN` secret with
    contents, pull requests and actions write access lets them trigger CI
    themselves. Enable auto-merge on the repository, or the run warns and
-   leaves pin-only pull requests for a manual merge.
+   leaves pin-only pull requests for a manual merge. With the default token,
+   also allow GitHub Actions to create and approve pull requests in the
+   repository's Actions settings, or the run pushes the branch and then fails
+   to open the pull request:
+
+   ```sh
+   gh api --method PUT repos/<owner>/<repo>/actions/permissions/workflow \
+     -f default_workflow_permissions=read -F can_approve_pull_request_reviews=true
+   ```
 
 ## Safety
 
