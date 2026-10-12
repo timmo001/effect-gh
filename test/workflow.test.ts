@@ -5,6 +5,7 @@ import { ChildProcessSpawner } from "effect/process";
 import {
   GhCommandError,
   GhDecodeError,
+  GhInvalidOptionsError,
   GhTimeoutError,
 } from "../src/errors.js";
 import { GhChunk, layer } from "../src/gh.js";
@@ -254,7 +255,7 @@ test.each([
       for (const request of requests) {
         expect(
           yield* request.pipe(Effect.provide(provided), Effect.flip),
-        ).toBeInstanceOf(Workflow.InvalidOptions);
+        ).toBeInstanceOf(GhInvalidOptionsError);
       }
 
       expect(fake.commands).toHaveLength(0);
@@ -279,7 +280,7 @@ test("option-like run IDs and implicit repositories are rejected at runtime", as
             Effect.provide(layer().pipe(Layer.provide(fake.layer))),
             Effect.flip,
           ),
-        ).toBeInstanceOf(Workflow.InvalidOptions);
+        ).toBeInstanceOf(GhInvalidOptionsError);
       }
 
       expect(fake.commands).toHaveLength(0);

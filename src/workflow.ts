@@ -1,4 +1,5 @@
 import { Effect, Schema, Stream } from "effect";
+import { GhInvalidOptionsError } from "./errors.js";
 import { Gh, type GhOptions } from "./gh.js";
 
 const positiveInteger = Schema.Int.check(Schema.isGreaterThan(0));
@@ -97,16 +98,11 @@ const watchOptions = Schema.Struct({
 
 export interface WatchOptions extends Schema.Schema.Type<typeof watchOptions> {}
 
-export class InvalidOptions extends Schema.TaggedError<InvalidOptions>()(
-  "WorkflowInvalidOptions",
-  { cause: Schema.Defect() },
-) {}
-
 const decodeOptions = Effect.fn("Workflow.decodeOptions")(function* <
   S extends Schema.Constraint,
 >(schema: S, input: S["Type"]) {
   return yield* Schema.decodeUnknownEffect(schema)(input).pipe(
-    Effect.mapError((cause) => new InvalidOptions({ cause })),
+    Effect.mapError((cause) => new GhInvalidOptionsError({ cause })),
   );
 });
 

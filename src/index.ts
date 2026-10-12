@@ -10,6 +10,7 @@ export {
 export {
   GhCommandError,
   GhDecodeError,
+  GhInvalidOptionsError,
   GhOutputLimitError,
   GhPlatformError,
   GhTimeoutError,
