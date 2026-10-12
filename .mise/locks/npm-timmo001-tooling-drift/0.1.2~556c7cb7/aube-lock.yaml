@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@timmo001/tooling-drift':
-        specifier: 0.1.0
-        version: 0.1.0(redis@6.3.0)
+        specifier: 0.1.2
+        version: 0.1.2(redis@6.3.0)
 
 packages:
 
@@ -63,13 +63,13 @@ packages:
     peerDependencies:
       '@redis/client': ^6.3.0
 
-  '@timmo001/effect-gh@0.5.3':
-    resolution: {integrity: sha512-2kEmjpektRHVyfudjkh4jZrmgR9IM7hDtxp3O0x3kXhyHcJ9+t7a5GcPjGWKfcJiVLJsfEG4WYH8c/wlATDXmQ==}
+  '@timmo001/effect-gh@0.6.1':
+    resolution: {integrity: sha512-/L+ksAzcQRHYugOLE1PiF1sOVhTjUpNGCgwn3rDAtOIW3G33agk9O7ypFcX9+nP9XqoIoR7A7xgZ3PeQOQJE5w==}
     peerDependencies:
-      effect: 4.0.2
+      effect: 4.0.3
 
-  '@timmo001/tooling-drift@0.1.0':
-    resolution: {integrity: sha512-L3oIoJdJ3UrCsbgnfmorAUSyLQBq5zQrgcR/+4whdNMh9ZCZblj3Smct3gB5jsbW601yoL1YIoE/ngUk9jDuEw==}
+  '@timmo001/tooling-drift@0.1.2':
+    resolution: {integrity: sha512-T6pmxawx2n90XXdvdXZhWXOk30U/DEzGW7gIwMl5baedrQJn6IdK09nUNGVpqud7Q0d2FBA+CHplvb2rbf+XFA==}
     hasBin: true
 
   '@types/node@26.6.5':
@@ -77,9 +77,6 @@ packages:
 
   '@types/ws@8.18.2':
     resolution: {integrity: sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==}
-
-  effect@4.0.2:
-    resolution: {integrity: sha512-YeYnLqSFrL4+tCOXRrfNP03w8FILoF/wDl+ukraJAGzXrjcS383W7LAAvGBbLatEyktmLxRq+9xJinx7QzXW5A==}
 
   effect@4.0.3:
     resolution: {integrity: sha512-LoWn/Uwwx0JjHSDmBAAahx8sB+klzM6vsZovnbYowBNw6B4QScJLRLBByO61plvNiycx7HPN8FnsWUCu0eXW5w==}
@@ -146,14 +143,14 @@ snapshots:
     dependencies:
       '@redis/client': 6.3.0
 
-  '@timmo001/effect-gh@0.5.3(effect@4.0.2)':
+  '@timmo001/effect-gh@0.6.1(effect@4.0.3)':
     dependencies:
-      effect: 4.0.2
+      effect: 4.0.3
 
-  '@timmo001/tooling-drift@0.1.0(redis@6.3.0)':
+  '@timmo001/tooling-drift@0.1.2(redis@6.3.0)':
     dependencies:
       '@effect/platform-node': 4.0.3(effect@4.0.3)(redis@6.3.0)
-      '@timmo001/effect-gh': 0.5.3(effect@4.0.2)
+      '@timmo001/effect-gh': 0.6.1(effect@4.0.3)
       effect: 4.0.3
     transitivePeerDependencies:
       - bufferutil
@@ -166,8 +163,6 @@ snapshots:
   '@types/ws@8.18.2':
     dependencies:
       '@types/node': 26.6.5
-
-  effect@4.0.2: {}
 
   effect@4.0.3: {}
 
