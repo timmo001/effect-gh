@@ -19,7 +19,7 @@ ALIASES
 FLAGS
       --app string        Filter by GitHub App author
   -a, --assignee string   Filter by assignee
-  -A, --author string     Filter by author
+  -A, --author string     Filter by author (use --app to filter by a GitHub App)
   -B, --base string       Filter by base branch
   -d, --draft             Filter by draft state
   -H, --head string       Filter by head branch ("<owner>:<branch>" syntax not supported)
@@ -49,6 +49,9 @@ JSON FIELDS
 EXAMPLES
   # List PRs authored by you
   $ gh pr list --author "@me"
+  
+  # List PRs opened by a GitHub App such as Dependabot
+  $ gh pr list --app dependabot
   
   # List PRs with a specific head branch name
   $ gh pr list --head "typo"
