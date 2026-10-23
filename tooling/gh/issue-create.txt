@@ -3,7 +3,8 @@ Create an issue on GitHub.
 
 Use `--attach` to upload an image or video. The attachment is appended to the
 body. If the body references an attached file, such as `![alt](./login.png)`, that
-reference is rewritten to point at the uploaded asset instead.
+reference is rewritten to point at the uploaded asset instead. Paths in a
+`--body-file` are relative to its directory, falling back to the working directory.
 You can attach up to 50 files per command.
 
 Alt text for an image follows the path after `#`, as in

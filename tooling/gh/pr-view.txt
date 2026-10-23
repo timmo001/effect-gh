@@ -4,6 +4,9 @@ Display the title, body, and other information about a pull request.
 Without an argument, the pull request that belongs to the current branch
 is displayed.
 
+When `--comments` is used, terminal output includes the pull request details, comments,
+and reviews. When output is piped or redirected, only comments and reviews are printed.
+
 With `--web` flag, open the pull request in a web browser instead.
 
 For more information about output formatting flags, see `gh help formatting`.
