@@ -6,6 +6,6 @@
 assignee: timmo001
 tools:
   - repo: cli/cli
-    reviewed: v2.103.0
+    reviewed: v2.103.2
     update: mise run tooling:refresh
     review: Check each changed snapshot under tooling/gh against the wrapper in src/ that uses the command, and adjust the SDK where a flag or --json field it relies on moved.
