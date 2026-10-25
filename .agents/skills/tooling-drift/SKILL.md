@@ -2,7 +2,7 @@
 name: tooling-drift
 license: Apache-2.0
 compatibility: Requires Git, an authenticated GitHub CLI, mise and the @timmo001/tooling-drift tool pinned in the repository's mise config, with Node.js to run it.
-description: Keep a repository reviewed against the releases of the tools it wraps, configures or forks, recorded in its tooling.yml. Use when a tool a repository depends on has a new release, when checking or recording which release a repository was last reviewed against, when handling an "Update <owner>/<repo> to <tag>" pull request, or when adding tooling drift to a repository.
+description: Keep a repository reviewed against releases of the tools it wraps, configures or forks, recorded in its tooling.yml. Use when such a tool has a new release, when checking or moving a repository's pins, for an "Update <owner>/<repo> to <tag>" pull request, or when adding tooling drift to a repository.
 ---
 
 # Tooling Drift
