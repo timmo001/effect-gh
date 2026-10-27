@@ -37,6 +37,10 @@ Run `mise run tooling:status`. It prints each tool's reviewed and latest
 release and exits non-zero when one is behind. Without the tool, compare
 `reviewed` in `tooling.yml` with `gh release view --repo <repo> --json tagName`.
 
+GitHub's latest release leaves out prereleases. To review a release candidate,
+set `prereleases: true` on the tool first, so the tool follows its tags and
+doesn't take the candidate for drift; its stable release replaces it later.
+
 ## Review a release
 
 1. Read the release notes from the reviewed tag up to the latest, with
