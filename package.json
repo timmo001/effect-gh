@@ -58,5 +58,8 @@
   },
   "trustedDependencies": [
     "@effect/tsgo"
-  ]
+  ],
+  "dependencies": {
+    "graphql": "17.0.2"
+  }
 }

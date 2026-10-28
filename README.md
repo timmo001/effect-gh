@@ -196,8 +196,7 @@ layer-level stdin.
 `--paginate --slurp`. The result is an array of decoded **pages**, not flattened
 items: use an array schema for array endpoints, or an object schema for envelopes
 such as `{ workflow_runs: [...] }`. It buffers all pages and does not provide a
-snapshot-consistency guarantee. GraphQL cursor pagination remains available
-through the raw `Gh` interface.
+snapshot-consistency guarantee. For GraphQL, use [`Graphql.query`](#graphql).
 
 ### Retries
 
@@ -324,8 +323,72 @@ Use REST page schemas through `Api` when a consumer needs snake_case fields,
 page envelopes or attempt-specific jobs.
 
 `Workflow.jobs` returns a run's jobs and steps. `Workflow.dispatch` starts a
-`workflow_dispatch` run with an optional ref and string inputs, and
-`Workflow.open` opens a run in the browser.
+`workflow_dispatch` run with an optional ref and string inputs,
+`Workflow.rerun` reruns a run, only its failed jobs (`failedOnly`) or one `job`,
+and `Workflow.open` opens a run in the browser.
+
+## Reviews, comments and discussions
+
+```ts
+import { Comment, Discussion, Review } from "@timmo001/effect-gh";
+
+const threads = Review.threads({
+  repo: "owner/repo",
+  number: 42,
+  unresolvedOnly: true,
+});
+const resolve = Review.resolve({ threadId: "PRRT_..." });
+const review = Review.submit({
+  repo: "owner/repo",
+  number: 42,
+  event: "COMMENT",
+  body: "A few notes",
+  comments: [{ path: "src/a.ts", line: 12, startLine: 10, body: "Rename" }],
+});
+const comments = Comment.list({ repo: "owner/repo", number: 42 });
+const discussions = Discussion.list({ repo: "owner/repo", limit: 10 });
+```
+
+- `Review.list` returns every review with its body, state, author and
+  `submittedAt` (null while pending). `Review.threads` returns every review
+  thread with resolution, outdated state, path, line and its first 100
+  comments; `unresolvedOnly` drops resolved threads. `Review.reply`,
+  `Review.resolve` and `Review.unresolve` take a thread's node ID.
+  `Review.submit` posts an `APPROVE`, `REQUEST_CHANGES` or `COMMENT` review
+  with inline comments; `side` defaults to `RIGHT` and `startLine` makes a
+  multi-line comment.
+- `Comment.list` returns a pull request's or issue's conversation comments.
+  `Comment.edit` and `Comment.remove` take a comment's numeric ID, with
+  `kind: "review"` for inline review comments.
+- `Discussion.view`, `list` (open by default, at most 30), `comments` (with
+  their first 100 replies), `comment` and `reply` (to a top-level comment's
+  node ID) use GraphQL.
+
+Selectors are validated before spawning and fail with `GhInvalidOptionsError`.
+Mutations never retry.
+
+## GraphQL
+
+`Graphql.query(document, variables, schema, options?)` posts through
+`gh api graphql` and decodes `data` with the schema. A response with `errors`
+fails with `GraphqlResponseError`, carrying each error's message, type and
+path. Pass `hostname` in the options for GitHub Enterprise Server.
+
+`Graphql.operations(document)` parses a document with the `graphql` package,
+without running it, and returns each operation's kind (`query`, `mutation` or
+`subscription`), name and top-level field names, with aliases resolved and
+fragments expanded. Use it to tell reads from writes. Invalid syntax fails with
+`GraphqlParseError`.
+
+## Attachments
+
+`Attachment.upload({ repository, path, contentType? })` uploads a file the way
+the web editor does and returns its URL for Markdown. It works for review
+bodies, inline comments and discussions, which `--attach` can't reach, and
+without write access to the repository. The content type is inferred from the
+extension unless given. Private repositories fail with
+`AttachmentPrivateRepositoryError`, because their assets 404 for anyone
+without access. Assets 404 until they are used in a post. github.com only.
 
 ## Auth, extensions, labels, releases and search
 

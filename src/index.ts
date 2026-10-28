@@ -48,3 +48,13 @@ export * as Label from "./label.js";
 export * as Release from "./release.js";
 
 export * as Search from "./search.js";
+
+export * as Graphql from "./graphql.js";
+
+export * as Review from "./review.js";
+
+export * as Discussion from "./discussion.js";
+
+export * as Comment from "./comment.js";
+
+export * as Attachment from "./attachment.js";
