@@ -242,6 +242,32 @@ export const dispatch = Effect.fn("Workflow.dispatch")(function* (
 
 const openOptions = Schema.Struct({ repo: repository, runId: positiveInteger });
 
+const rerunOptions = Schema.Struct({
+  repo: repository,
+  runId: positiveInteger,
+  /** Rerun only failed jobs and their dependencies. */
+  failedOnly: Schema.optionalKey(Schema.Boolean),
+  /** Rerun one job, by its `databaseId`, and its dependencies. */
+  job: Schema.optionalKey(positiveInteger),
+});
+
+export interface RerunOptions extends Schema.Schema.Type<typeof rerunOptions> {}
+
+/** Rerun a whole run, only its failed jobs, or one job. */
+export const rerun = Effect.fn("Workflow.rerun")(function* (
+  input: RerunOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(rerunOptions, input);
+  const gh = yield* Gh;
+  const args = ["run", "rerun", String(query.runId), "--repo", query.repo];
+
+  if (query.failedOnly) args.push("--failed");
+
+  if (query.job !== undefined) args.push("--job", String(query.job));
+  yield* gh.execute(args, options);
+});
+
 export interface OpenOptions extends Schema.Schema.Type<typeof openOptions> {}
 
 /** Open a run in the browser. */

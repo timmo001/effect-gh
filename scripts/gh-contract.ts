@@ -47,6 +47,7 @@ const commands: readonly Command[] = [
   { name: "repo-clone", args: ["repo", "clone"] },
   { name: "repo-view", args: ["repo", "view"], json: true },
   { name: "run-list", args: ["run", "list"], json: true },
+  { name: "run-rerun", args: ["run", "rerun"] },
   { name: "run-view", args: ["run", "view"], json: true },
   { name: "run-watch", args: ["run", "watch"] },
   { name: "search-code", args: ["search", "code"], json: true },

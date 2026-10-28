@@ -288,6 +288,27 @@ test("option-like run IDs and implicit repositories are rejected at runtime", as
   );
 });
 
+test.each([
+  [{}, []],
+  [{ failedOnly: true }, ["--failed"]],
+  [{ job: 456 }, ["--job", "456"]],
+])("rerun selects the jobs to rerun: %o", async (selection, flags) => {
+  await Effect.runPromise(
+    Effect.gen(function* () {
+      const fake = yield* fakeSpawner();
+
+      yield* Workflow.rerun({
+        repo: "owner/repo",
+        runId: 123,
+        ...selection,
+      }).pipe(Effect.provide(layer().pipe(Layer.provide(fake.layer))));
+      expect(fake.commands[0]).toMatchObject({
+        args: ["run", "rerun", "123", "--repo", "owner/repo", ...flags],
+      });
+    }),
+  );
+});
+
 test("watch emits both tagged pipes before failed exit, without retrying", async () => {
   await Effect.runPromise(
     Effect.gen(function* () {
