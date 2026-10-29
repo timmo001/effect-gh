@@ -5,11 +5,12 @@ import { Gh, Release, layer } from "../src/index.js";
 
 /**
  * Snapshot the parts of gh this SDK relies on: the help of every wrapped
- * command and the `--json` fields of those that select fields. The tooling
- * drift workflow regenerates the snapshot at each gh release so a changed
- * flag or field shows up as a diff under `tooling/gh`. `--release <tag>`
- * downloads that cli/cli release and snapshots its gh; `--gh <executable>`
- * snapshots an installed one.
+ * command and the `--json` fields of those that select fields, plus the help
+ * of gh itself and of each command group the SDK wraps, which lists their
+ * subcommands. The tooling drift workflow regenerates the snapshot at each gh
+ * release so a changed flag or field, or a new command or subcommand, shows up
+ * as a diff under `tooling/gh`. `--release <tag>` downloads that cli/cli
+ * release and snapshots its gh; `--gh <executable>` snapshots an installed one.
  */
 interface Command {
   readonly name: string;
@@ -17,13 +18,44 @@ interface Command {
   readonly json?: boolean;
 }
 
+/** gh and the command groups the SDK wraps, whose help lists their commands. */
+const groups: readonly Command[] = [
+  { name: "gh", args: [] },
+  { name: "auth", args: ["auth"] },
+  { name: "extension", args: ["extension"] },
+  { name: "issue", args: ["issue"] },
+  { name: "issue-artifact", args: ["issue", "artifact"] },
+  { name: "label", args: ["label"] },
+  { name: "pr", args: ["pr"] },
+  { name: "release", args: ["release"] },
+  { name: "repo", args: ["repo"] },
+  { name: "run", args: ["run"] },
+  { name: "search", args: ["search"] },
+  { name: "workflow", args: ["workflow"] },
+];
+
 const commands: readonly Command[] = [
+  ...groups,
   { name: "api", args: ["api"] },
   { name: "auth-status", args: ["auth", "status"] },
   { name: "auth-token", args: ["auth", "token"] },
   { name: "extension-install", args: ["extension", "install"] },
   { name: "extension-list", args: ["extension", "list"] },
   { name: "extension-upgrade", args: ["extension", "upgrade"] },
+  { name: "issue-artifact-create", args: ["issue", "artifact", "create"] },
+  { name: "issue-artifact-delete", args: ["issue", "artifact", "delete"] },
+  { name: "issue-artifact-download", args: ["issue", "artifact", "download"] },
+  { name: "issue-artifact-edit", args: ["issue", "artifact", "edit"] },
+  {
+    name: "issue-artifact-list",
+    args: ["issue", "artifact", "list"],
+    json: true,
+  },
+  {
+    name: "issue-artifact-view",
+    args: ["issue", "artifact", "view"],
+    json: true,
+  },
   { name: "issue-close", args: ["issue", "close"] },
   { name: "issue-comment", args: ["issue", "comment"] },
   { name: "issue-create", args: ["issue", "create"] },
@@ -45,6 +77,8 @@ const commands: readonly Command[] = [
   { name: "release-upload", args: ["release", "upload"] },
   { name: "release-view", args: ["release", "view"], json: true },
   { name: "repo-clone", args: ["repo", "clone"] },
+  { name: "repo-read-dir", args: ["repo", "read-dir"], json: true },
+  { name: "repo-read-file", args: ["repo", "read-file"], json: true },
   { name: "repo-view", args: ["repo", "view"], json: true },
   { name: "run-list", args: ["run", "list"], json: true },
   { name: "run-rerun", args: ["run", "rerun"] },
@@ -178,7 +212,7 @@ const capture = Effect.fn("GhContract.capture")(function* (
 });
 
 const section = (args: readonly string[], text: string) =>
-  `$ gh ${args.join(" ")}\n${text.trimEnd()}\n`;
+  `$ ${["gh", ...args].join(" ")}\n${text.trimEnd()}\n`;
 
 const snapshot = Effect.fn("GhContract.snapshot")(function* (command: Command) {
   const help = yield* capture([...command.args, "--help"]);
@@ -236,6 +270,8 @@ const ghLayer = (executable: string) =>
     timeout: "30 seconds",
     env: {
       GH_CONFIG_DIR: `${process.env.TMPDIR ?? "/tmp"}/gh-contract-config`,
+      // gh --help lists installed extensions, which live in the data directory.
+      XDG_DATA_HOME: `${process.env.TMPDIR ?? "/tmp"}/gh-contract-data`,
       GH_NO_UPDATE_NOTIFIER: "1",
       GH_PROMPT_DISABLED: "1",
       GH_PAGER: "cat",
