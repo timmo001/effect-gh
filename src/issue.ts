@@ -32,6 +32,8 @@ export interface ListOptions extends ViewOptions {
   readonly labels?: ReadonlyArray<string>;
   readonly assignee?: string;
   readonly search?: string;
+  /** Only issues of this issue type, by name. */
+  readonly type?: string;
 }
 
 export class InvalidInput extends Schema.TaggedError<InvalidInput>()(
@@ -67,6 +69,8 @@ export const list = Effect.fn("Issue.list")(function* (
   if (options.assignee !== undefined) args.push("--assignee", options.assignee);
 
   if (options.search !== undefined) args.push("--search", options.search);
+
+  if (options.type !== undefined) args.push("--type", options.type);
   const gh = yield* Gh;
 
   return yield* gh.json(args, Schema.Array(IssueSummary), execution);
@@ -95,6 +99,23 @@ export const view = Effect.fn("Issue.view")(function* (
 
 const Author = Schema.Struct({ login: Schema.String });
 
+/** A parent, sub-issue or blocking issue, which may be in another repository. */
+export const LinkedIssue = Schema.Struct({
+  id: Schema.String,
+  number: Schema.Int,
+  title: Schema.String,
+  url: Schema.String,
+  state: Schema.String,
+  repository: Schema.Struct({ nameWithOwner: Schema.String }),
+});
+
+export interface LinkedIssue extends Schema.Schema.Type<typeof LinkedIssue> {}
+
+const linkedIssues = Schema.Struct({
+  nodes: Schema.Array(LinkedIssue),
+  totalCount: Schema.Int,
+});
+
 /** Every `gh issue --json` field the typed reads can select. */
 export const Fields = Schema.Struct({
   ...Issue.fields,
@@ -107,6 +128,23 @@ export const Fields = Schema.Struct({
       createdAt: Schema.String,
     }),
   ),
+  issueType: Schema.NullOr(
+    Schema.Struct({
+      id: Schema.String,
+      name: Schema.String,
+      description: Schema.String,
+      color: Schema.String,
+    }),
+  ),
+  parent: Schema.NullOr(LinkedIssue),
+  subIssues: linkedIssues,
+  subIssuesSummary: Schema.Struct({
+    total: Schema.Int,
+    completed: Schema.Int,
+    percentCompleted: Schema.Finite,
+  }),
+  blockedBy: linkedIssues,
+  blocking: linkedIssues,
 });
 
 export interface Fields extends Schema.Schema.Type<typeof Fields> {}
@@ -174,17 +212,43 @@ export const query = Effect.fn("Issue.query")(function* <
   if (input.assignee !== undefined) args.push("--assignee", input.assignee);
 
   if (input.search !== undefined) args.push("--search", input.search);
+
+  if (input.type !== undefined) args.push("--type", input.type);
   const gh = yield* Gh;
 
   return yield* gh.json(args, Schema.Array(selection(input.fields)), execution);
 });
 
+/** An issue number or URL, as gh's relationship flags take them. */
+type IssueReference = number | string;
+
+const repeated = (flag: string, values: ReadonlyArray<IssueReference> = []) =>
+  values.flatMap((value) => [flag, String(value)]);
+
+/**
+ * Image or video files to upload, as `<file>` or `<file>#<alt text>`. gh
+ * appends them to the body, or points a body reference to the file at the
+ * upload. When some fail, the rest are still saved and gh exits non-zero.
+ */
+export interface AttachmentInput {
+  readonly attachments?: ReadonlyArray<string>;
+}
+
+const attachArgs = (input: AttachmentInput) =>
+  repeated("--attach", input.attachments);
+
 /** Input for {@link create}. */
-export interface CreateInput {
+export interface CreateInput extends AttachmentInput {
   readonly repo: string;
   readonly title: string;
   readonly body: string;
   readonly labels?: ReadonlyArray<string>;
+  /** Issue type by name, such as `Bug`. */
+  readonly type?: string;
+  /** Make the new issue a sub-issue of this one. */
+  readonly parent?: IssueReference;
+  readonly blockedBy?: ReadonlyArray<IssueReference>;
+  readonly blocking?: ReadonlyArray<IssueReference>;
 }
 
 /** Open an issue and return its URL. */
@@ -206,21 +270,41 @@ export const create = Effect.fn("Issue.create")(function* (
   ];
 
   for (const label of input.labels ?? []) args.push("--label", label);
+
+  if (input.type !== undefined) args.push("--type", input.type);
+
+  if (input.parent !== undefined) args.push("--parent", String(input.parent));
+  args.push(
+    ...repeated("--blocked-by", input.blockedBy),
+    ...repeated("--blocking", input.blocking),
+    ...attachArgs(input),
+  );
   const output = yield* gh.execute(args, execution);
 
   return { url: output.stdout.trim().split("\n").at(-1) ?? "" };
 });
 
 /** Input for {@link edit}. */
-export interface EditInput {
+export interface EditInput extends AttachmentInput {
   readonly repo: string;
   readonly title?: string;
   readonly body?: string;
   readonly addLabels?: ReadonlyArray<string>;
   readonly removeLabels?: ReadonlyArray<string>;
+  /** Issue type by name, such as `Bug`. */
+  readonly type?: string;
+  readonly removeType?: boolean;
+  readonly parent?: IssueReference;
+  readonly removeParent?: boolean;
+  readonly addSubIssues?: ReadonlyArray<IssueReference>;
+  readonly removeSubIssues?: ReadonlyArray<IssueReference>;
+  readonly addBlockedBy?: ReadonlyArray<IssueReference>;
+  readonly removeBlockedBy?: ReadonlyArray<IssueReference>;
+  readonly addBlocking?: ReadonlyArray<IssueReference>;
+  readonly removeBlocking?: ReadonlyArray<IssueReference>;
 }
 
-/** Change an issue's title, body or labels. */
+/** Change an issue's title, body, labels, type or relationships. */
 export const edit = Effect.fn("Issue.edit")(function* (
   issue: number | string,
   input: EditInput,
@@ -237,14 +321,32 @@ export const edit = Effect.fn("Issue.edit")(function* (
 
   for (const label of input.removeLabels ?? [])
     args.push("--remove-label", label);
-  args.push("--", String(issue));
+
+  if (input.type !== undefined) args.push("--type", input.type);
+
+  if (input.removeType) args.push("--remove-type");
+
+  if (input.parent !== undefined) args.push("--parent", String(input.parent));
+
+  if (input.removeParent) args.push("--remove-parent");
+  args.push(
+    ...repeated("--add-sub-issue", input.addSubIssues),
+    ...repeated("--remove-sub-issue", input.removeSubIssues),
+    ...repeated("--add-blocked-by", input.addBlockedBy),
+    ...repeated("--remove-blocked-by", input.removeBlockedBy),
+    ...repeated("--add-blocking", input.addBlocking),
+    ...repeated("--remove-blocking", input.removeBlocking),
+    ...attachArgs(input),
+    "--",
+    String(issue),
+  );
   yield* gh.execute(args, execution);
 });
 
 /** Add a comment to an issue. */
 export const comment = Effect.fn("Issue.comment")(function* (
   issue: number | string,
-  input: { readonly repo: string; readonly body: string },
+  input: AttachmentInput & { readonly repo: string; readonly body: string },
   execution?: GhOptions,
 ) {
   const gh = yield* Gh;
@@ -257,6 +359,7 @@ export const comment = Effect.fn("Issue.comment")(function* (
       input.repo,
       "--body",
       input.body,
+      ...attachArgs(input),
       "--",
       String(issue),
     ],

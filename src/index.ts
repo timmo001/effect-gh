@@ -33,6 +33,8 @@ export * as Repository from "./repository.js";
 
 export * as Issue from "./issue.js";
 
+export * as IssueArtifact from "./issue-artifact.js";
+
 export * as PullRequest from "./pull-request.js";
 
 export * as Workflow from "./workflow.js";

@@ -254,12 +254,69 @@ Invalid numeric limits and selectors fail with `IssueInvalidInput` before spawni
 
 `Issue.get` and `Issue.query` take a `fields` tuple, such as
 `["number", "body", "labels", "comments"]`, and decode exactly those fields.
+The fields include `issueType`, `parent`, `subIssues`, `subIssuesSummary`,
+`blockedBy` and `blocking`; linked issues carry their number, title, URL, state
+and repository. `Issue.list` and `query` also filter by issue `type` name.
 `Issue.create` returns the new issue's URL; `edit`, `comment` and `close` cover
-the common mutations.
+the common mutations. `create` sets a `type`, `parent`, `blockedBy` and
+`blocking`; `edit` sets or removes the type and parent, and adds or removes
+sub-issues and blocked-by or blocking issues, by number or URL. `create`, `edit`
+and `comment` (and `PullRequest.create` and `edit`) upload image and video
+`attachments` through `--attach`, as `<file>` or `<file>#<alt text>`. When some
+uploads fail, gh still saves the rest and exits non-zero.
 
 `Repository.clone` captures output, so pass non-interactive git settings in
 `env`. `Repository.cloneInteractive` clones on the terminal. Both accept extra
 `gitArgs`. `Repository.browse` opens a repository or one of its sections.
+`Repository.readFile({ repo?, path, ref? })` reads a text file and
+`Repository.readDir({ repo?, path?, ref? })` lists a directory's name, path,
+type, size, Git SHA and mode, both without cloning. They wrap gh's preview
+`repo read-file` and `read-dir`.
+
+### Issue artifacts
+
+```ts
+import { IssueArtifact } from "@timmo001/effect-gh";
+
+const artifacts = IssueArtifact.list(142, { repo: "owner/repo" });
+const plan = IssueArtifact.view(142, 2, { repo: "owner/repo" });
+const created = IssueArtifact.create(142, {
+  repo: "owner/repo",
+  sources: ["docs/plan.md#Sign-in plan", "https://example.com/runbook"],
+});
+const restored = IssueArtifact.edit(142, 2, {
+  repo: "owner/repo",
+  restoreVersion: 5,
+});
+```
+
+`IssueArtifact` wraps `gh issue artifact`, which is in private preview: gh
+refuses it on repositories that aren't enrolled. Issues are numbers or URLs and
+artifacts are numbers; each call takes an optional `repo` and core execution
+options last.
+
+- `list` returns every artifact, or a `type` and `limit`, with its ID, number,
+  name, type (`generic`, `plan`, `link` or `embedded_html`), body, HTML, URL,
+  creator, last editor and times. Actors and times are null when unknown.
+  `view` adds the edit history in `versions`, newest first.
+- `create` makes one artifact per file or URL in `sources`, or one from `body`
+  or `bodyFile` (`-` reads `stdin`) with a `name`. `type` sets every document's
+  type. `edit` renames, replaces content, appends `attachments`, or saves
+  `restoreVersion` as a new version, which can't be combined with the others.
+- `download` writes `<number>-<name>` files for the given `artifacts`, or all
+  of them, into `directory`, or one to `output`, with `clobber`,
+  `skipExisting` and a single artifact's `version`. `content` returns one
+  artifact's content, or an earlier version's, as text.
+- `create`, `edit` and `download` return one `Result` per artifact: `status`
+  (`created`, `updated`, `restored`, `skipped` or `failed`), `number`, `name`
+  (the path for a download), `source` and `reason`. gh exits 1 after any
+  failure, so pass `GhCommandError.stdout` to `IssueArtifact.parseResults` to
+  see what was still saved.
+- `remove` deletes artifacts without a prompt; deleted artifacts can't be
+  restored.
+
+Invalid numbers and repositories fail with `GhInvalidOptionsError` before
+spawning.
 
 ## Pull requests
 
@@ -430,7 +487,9 @@ mise run check ::: build
 
 [tooling.yml](tooling.yml) records the gh release the SDK was last reviewed
 against, and [tooling/gh](tooling/gh) holds a snapshot of the help and `--json`
-fields of every wrapped command at that release. The daily **Tooling drift**
+fields of every wrapped command at that release, plus the help of gh itself and
+of each command group the SDK wraps, so a new command or subcommand shows up
+too. The daily **Tooling drift**
 workflow runs `mise run tooling:publish`, the
 [tooling-drift](https://github.com/timmo001/tooling-drift) tool pinned in
 [mise.toml](mise.toml). It compares the reviewed release with the latest
@@ -438,7 +497,7 @@ workflow runs `mise run tooling:publish`, the
 `mise run tooling:refresh <tag>` to regenerate the snapshot from that release,
 then opens one pull request: `[Pin-only] Update cli/cli to <tag>` with squash
 auto-merge when the snapshot is unchanged, or `Update cli/cli to <tag>` for
-review when a flag or field changed. Review that diff against the wrappers in
+review when a flag, field or command changed. Review that diff against the wrappers in
 `src/` before merging; a change here may also need one in the repositories that
 use the SDK.
 
@@ -447,7 +506,7 @@ downloads that gh release through
 [scripts/gh-contract.ts](scripts/gh-contract.ts), regenerates the snapshot and
 records the tag; `mise run tooling:status` prints whether a newer release
 exists. Add a command to the list in that script when the SDK starts wrapping
-it.
+it, and its group when the SDK wraps a new one.
 
 ## Releases
 

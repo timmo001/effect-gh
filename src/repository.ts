@@ -69,6 +69,81 @@ export const cloneInteractive = Effect.fn("Repository.cloneInteractive")(
   },
 );
 
+/** Input for {@link readFile} and {@link readDir}; gh's preview `repo read-file` and `read-dir`. */
+export interface ReadInput {
+  /** [HOST/]OWNER/REPO; the working directory's repository without it. */
+  readonly repo?: string;
+  readonly path: string;
+  /** Branch, tag or commit; the default branch without it. */
+  readonly ref?: string;
+}
+
+const readArgs = (command: string, input: Omit<ReadInput, "path">) => [
+  "repo",
+  command,
+  ...(input.repo === undefined ? [] : ["--repo", input.repo]),
+  ...(input.ref === undefined ? [] : ["--ref", input.ref]),
+];
+
+/**
+ * Read a text file without cloning. Escape sequences are kept, since the
+ * output is captured rather than printed to a terminal.
+ */
+export const readFile = Effect.fn("Repository.readFile")(function* (
+  input: ReadInput,
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  const output = yield* gh.execute(
+    [
+      ...readArgs("read-file", input),
+      "--allow-escape-sequences",
+      "--",
+      input.path,
+    ],
+    options,
+  );
+
+  return output.stdout;
+});
+
+/** One entry of a directory listing from {@link readDir}. */
+export const DirectoryEntry = Schema.Struct({
+  name: Schema.String,
+  path: Schema.String,
+  type: Schema.Literals(["file", "dir", "symlink", "submodule", "unknown"]),
+  size: Schema.Int,
+  gitSHA: Schema.String,
+  /** Octal Git file mode, such as `100644`. */
+  modeOctal: Schema.String,
+});
+
+export interface DirectoryEntry extends Schema.Schema.Type<
+  typeof DirectoryEntry
+> {}
+
+/** List a directory without cloning, or the root when `path` is omitted. */
+export const readDir = Effect.fn("Repository.readDir")(function* (
+  input: Omit<ReadInput, "path"> & { readonly path?: string },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  const result = yield* gh.json(
+    [
+      ...readArgs("read-dir", input),
+      "--json",
+      "name,path,type,size,gitSHA,modeOctal",
+      ...(input.path === undefined ? [] : ["--", input.path]),
+    ],
+    Schema.Struct({ entries: Schema.Array(DirectoryEntry) }),
+    options,
+  );
+
+  return result.entries;
+});
+
 /** Open a repository, or one of its sections, in the browser. */
 export const browse = Effect.fn("Repository.browse")(function* (
   input: {

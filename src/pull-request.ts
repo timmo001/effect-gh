@@ -270,6 +270,8 @@ export interface CreateInput {
   readonly body: string;
   readonly assignees?: ReadonlyArray<string>;
   readonly draft?: boolean;
+  /** Image or video files to upload into the body, as `<file>` or `<file>#<alt text>`. */
+  readonly attachments?: ReadonlyArray<string>;
 }
 
 /** Open a pull request and return its URL. */
@@ -293,6 +295,8 @@ export const create = Effect.fn("PullRequest.create")(function* (
     args.push(`--assignee=${assignee}`);
 
   if (input.draft) args.push("--draft");
+
+  for (const file of input.attachments ?? []) args.push(`--attach=${file}`);
   const output = yield* gh.execute(args, options);
 
   return { url: output.stdout.trim().split("\n").at(-1) ?? "" };
@@ -306,6 +310,8 @@ export interface EditInput {
   readonly addAssignees?: ReadonlyArray<string>;
   readonly addLabels?: ReadonlyArray<string>;
   readonly removeLabels?: ReadonlyArray<string>;
+  /** Image or video files to upload, appended to the body unless it references them. */
+  readonly attachments?: ReadonlyArray<string>;
 }
 
 /** Change a pull request's title, body, assignees or labels. */
@@ -328,6 +334,8 @@ export const edit = Effect.fn("PullRequest.edit")(function* (
 
   for (const label of input.removeLabels ?? [])
     args.push(`--remove-label=${label}`);
+
+  for (const file of input.attachments ?? []) args.push(`--attach=${file}`);
   args.push("--", String(selector));
   yield* gh.execute(args, options);
 });
