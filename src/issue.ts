@@ -99,14 +99,16 @@ export const view = Effect.fn("Issue.view")(function* (
 
 const Author = Schema.Struct({ login: Schema.String });
 
-/** A parent, sub-issue or blocking issue, which may be in another repository. */
+/**
+ * A parent, sub-issue or blocking issue, which may be in another repository.
+ * gh leaves its repository out of the JSON, so read that from the URL.
+ */
 export const LinkedIssue = Schema.Struct({
   id: Schema.String,
   number: Schema.Int,
   title: Schema.String,
   url: Schema.String,
   state: Schema.String,
-  repository: Schema.Struct({ nameWithOwner: Schema.String }),
 });
 
 export interface LinkedIssue extends Schema.Schema.Type<typeof LinkedIssue> {}
