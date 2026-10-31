@@ -101,10 +101,10 @@ checksum = "sha256:dcc60d59a0746999f99064a01c020445d54d84228c691cdbf25b49ac3b591
 url = "https://nodejs.org/dist/v26.13.0/node-v26.13.0-win-x64.zip"
 
 [[tools."npm:@timmo001/tooling-drift"]]
-version = "0.1.4"
-aube = { path = ".mise/locks/npm-timmo001-tooling-drift/0.1.4~556c7cb7", digest = "sha256:d7fe02ed055261ff8561188def32b885b46789daa511b4aa94bb83731d8cc048" }
+version = "0.1.7"
+aube = { path = ".mise/locks/npm-timmo001-tooling-drift/0.1.7~556c7cb7", digest = "sha256:d2bc9ffb0526b49ecf1becbff8b9255e4aa59ff09f5113217d2d8af4d02cfef6" }
 backend = "npm:@timmo001/tooling-drift"
-specifiers = ["0.1.4"]
+specifiers = ["0.1.7"]
 
 [tools."npm:@timmo001/tooling-drift".options]
 allow_low_downloads = "true"
