@@ -7,8 +7,8 @@ import { Gh, Release, layer } from "../src/index.js";
  * Snapshot the parts of gh this SDK relies on: the help of every wrapped
  * command and the `--json` fields of those that select fields, plus the help
  * of gh itself and of each command group the SDK wraps, which lists their
- * subcommands. The tooling drift workflow regenerates the snapshot at each gh
- * release so a changed flag or field, or a new command or subcommand, shows up
+ * subcommands. Upkeep's drift job flags each new gh release; refreshing the
+ * snapshot then shows a changed flag or field, or a new command or subcommand,
  * as a diff under `tooling/gh`. `--release <tag>` downloads that cli/cli
  * release and snapshots its gh; `--gh <executable>` snapshots an installed one.
  */

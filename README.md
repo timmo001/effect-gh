@@ -492,24 +492,18 @@ mise run check ::: build
 against, and [tooling/gh](tooling/gh) holds a snapshot of the help and `--json`
 fields of every wrapped command at that release, plus the help of gh itself and
 of each command group the SDK wraps, so a new command or subcommand shows up
-too. The daily **Tooling drift**
-workflow runs `mise run tooling:publish`, the
-[tooling-drift](https://github.com/timmo001/tooling-drift) tool pinned in
-[mise.toml](mise.toml). It compares the reviewed release with the latest
-[cli/cli](https://github.com/cli/cli/releases) release and, when it moves, runs
-`mise run tooling:refresh <tag>` to regenerate the snapshot from that release,
-then opens one pull request: `[Pin-only] Update cli/cli to <tag>` with squash
-auto-merge when the snapshot is unchanged, or `Update cli/cli to <tag>` for
-review when a flag, field or command changed. Review that diff against the wrappers in
-`src/` before merging; a change here may also need one in the repositories that
-use the SDK.
+too. Upkeep's
+[`drift` job](https://upkeep.timmo.dev/running#drift) compares the reviewed
+release with the latest [cli/cli](https://github.com/cli/cli/releases) release
+and flags it when it moves.
 
-Run the same update by hand with `mise run tooling:update <tag>`, which
-downloads that gh release through
-[scripts/gh-contract.ts](scripts/gh-contract.ts), regenerates the snapshot and
-records the tag; `mise run tooling:status` prints whether a newer release
-exists. Add a command to the list in that script when the SDK starts wrapping
-it, and its group when the SDK wraps a new one.
+To review a new release, run `mise run tooling:refresh <tag>`, which downloads
+that gh release through [scripts/gh-contract.ts](scripts/gh-contract.ts) and
+regenerates the snapshot. Review the diff against the wrappers in `src/`; a
+change here may also need one in the repositories that use the SDK. Record the
+review by setting `reviewed` in [tooling.yml](tooling.yml) and pushing. Add a
+command to the list in that script when the SDK starts wrapping it, and its
+group when the SDK wraps a new one.
 
 ## Releases
 

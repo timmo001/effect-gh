@@ -8,8 +8,10 @@ Effect v4 SDK for the GitHub CLI. The README documents usage and development.
 - Use `mise run format`, `mise run check` and `mise run build` for validation.
 - `src/index.ts` is the package entrypoint; `dist/` is generated and untracked.
 - `tooling.yml` records the reviewed gh release and `tooling/gh/` its command snapshot.
-  Move them with `mise run tooling:update <tag>`, never by hand, add new wrapped
-  commands to `scripts/gh-contract.ts`, and use the `tooling-drift` skill for reviews.
+  Upkeep's [`drift` job](https://upkeep.timmo.dev/running#drift) checks for new
+  releases. Regenerate the snapshot with `mise run tooling:refresh <tag>`, never by
+  hand, record a review by setting `reviewed` in `tooling.yml` and pushing, and add
+  new wrapped commands to `scripts/gh-contract.ts`.
 - Use lowercase filenames, with kebab-case for multiword names.
 - Use the shared `@timmo001/oxlint-rules/configs/recommended-effect` preset and
   its supported Oxlint peers.
