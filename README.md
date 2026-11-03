@@ -455,7 +455,10 @@ without access. Assets 404 until they are used in a post. github.com only.
   for fine-grained tokens.
 - `Extension.list` parses `gh extension list` into name, repository and version.
   `Extension.install` and `Extension.upgradeAll` accept `{ interactive: true }`.
-- `Label.create` (with `force` to update) and `Label.remove`.
+- `Label.list` (with `search`) decodes name, colour and description.
+  `Label.create` (with `force` to update), `Label.edit` (with `newName` to
+  rename in place), `Label.remove` and `Label.clone` (with `force` to
+  overwrite) cover the rest.
 - `Release.view` decodes selected fields, `Release.exists` checks a tag, and
   `create`, `edit`, `upload` and `download` cover publishing.
 - `Search.code` returns matching paths with their repositories.
