@@ -11,7 +11,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import * as Api from "../src/api.js";
 import { GhDecodeError, type GhError } from "../src/errors.js";
 import { Gh, layer } from "../src/gh.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 const firstCommand = (commands: ReadonlyArray<ChildProcess.Command>) => {
   const command = commands[0];
@@ -455,3 +455,70 @@ test.each([
     );
   },
 );
+
+test("conditional sends validators and returns the new ones with the decoded body", async () => {
+  const fake = scriptedSpawner([
+    {
+      stdout:
+        'HTTP/2.0 200 OK\r\nEtag: W/"two"\r\nLast-Modified: Thu, 05 Nov 2026 12:00:00 GMT\r\nX-Poll-Interval: 60\r\n\r\n{"id":1}',
+    },
+  ]);
+
+  const result = await fake.run(
+    Api.conditional(
+      { endpoint: "notifications", query: { all: false } },
+      Schema.Struct({ id: Schema.Int }),
+      { etag: 'W/"one"', lastModified: "Thu, 05 Nov 2026 11:00:00 GMT" },
+    ),
+  );
+
+  expect(fake.args()[0]).toEqual([
+    "api",
+    "--method",
+    "GET",
+    '--header=If-None-Match: W/"one"',
+    "--header=If-Modified-Since: Thu, 05 Nov 2026 11:00:00 GMT",
+    "--include",
+    "--",
+    "notifications?all=false",
+  ]);
+  expect(result).toEqual(
+    Api.Conditional.Modified({
+      value: { id: 1 },
+      validators: {
+        etag: 'W/"two"',
+        lastModified: "Thu, 05 Nov 2026 12:00:00 GMT",
+      },
+      headers: {
+        etag: 'W/"two"',
+        "last-modified": "Thu, 05 Nov 2026 12:00:00 GMT",
+        "x-poll-interval": "60",
+      },
+    }),
+  );
+});
+
+test("conditional treats gh's failing exit on a 304 as not modified", async () => {
+  const fake = scriptedSpawner([
+    {
+      stdout: 'HTTP/2.0 304 Not Modified\r\nEtag: W/"one"\r\n\r\n',
+      exitCode: 1,
+    },
+    {
+      stdout: "HTTP/2.0 404 Not Found\r\n\r\n{}",
+      exitCode: 1,
+    },
+  ]);
+
+  const request = { endpoint: "repos/o/r" } as const;
+
+  expect(
+    await fake.run(
+      Api.conditional(request, Schema.Unknown, { etag: 'W/"one"' }),
+    ),
+  ).toEqual(Api.Conditional.NotModified({ headers: { etag: 'W/"one"' } }));
+
+  const error = await fake.fail(Api.conditional(request, Schema.Unknown));
+
+  expect(error._tag).toBe("GhCommandError");
+});

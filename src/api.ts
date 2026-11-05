@@ -1,4 +1,4 @@
-import { Effect, Schema } from "effect";
+import { Data, Effect, Schema } from "effect";
 import { GhDecodeError, type GhError } from "./errors.js";
 import { Gh, type GhOptions, type GhOutput } from "./gh.js";
 
@@ -138,6 +138,29 @@ export const text = Effect.fn("Api.text")(function* (
   return (yield* raw(request)).stdout;
 });
 
+// Splits `gh api --include` output into its status, lower-cased headers and body.
+const parseIncluded = (stdout: string) => {
+  const blank = /\r?\n\r?\n/.exec(stdout);
+  const head = blank ? stdout.slice(0, blank.index) : stdout;
+  const [statusLine = "", ...lines] = head.split(/\r?\n/);
+  const headers: Record<string, string> = {};
+
+  for (const line of lines) {
+    const separator = line.indexOf(":");
+
+    if (separator > 0)
+      headers[line.slice(0, separator).trim().toLowerCase()] = line
+        .slice(separator + 1)
+        .trim();
+  }
+
+  return {
+    status: Number(/^HTTP\/\S+\s+(\d{3})\b/.exec(statusLine)?.[1] ?? 0),
+    headers,
+    body: blank ? stdout.slice(blank.index + blank[0].length) : "",
+  };
+};
+
 /** Returns the response headers with lower-cased names. Use method HEAD to skip the body. Never retries. */
 export const headers = Effect.fn("Api.headers")(function* (
   request: Request,
@@ -150,19 +173,100 @@ export const headers = Effect.fn("Api.headers")(function* (
     command.options,
   );
 
-  const head = output.stdout.split(/\r?\n\r?\n/, 1)[0] ?? "";
-  const result: Record<string, string> = {};
+  return parseIncluded(output.stdout).headers;
+});
 
-  for (const line of head.split(/\r?\n/).slice(1)) {
-    const separator = line.indexOf(":");
+/** Cache validators from an earlier response, sent back as `If-None-Match` and `If-Modified-Since`. */
+export interface Validators {
+  readonly etag?: string;
+  readonly lastModified?: string;
+}
 
-    if (separator > 0)
-      result[line.slice(0, separator).trim().toLowerCase()] = line
-        .slice(separator + 1)
-        .trim();
-  }
+/** A conditional GET's outcome. Both carry the response headers with lower-cased names, such as `x-poll-interval`. */
+export type Conditional<A> = Data.TaggedEnum<{
+  Modified: {
+    readonly value: A;
+    /** Validators for the next request; empty when the response sent none. */
+    readonly validators: Validators;
+    readonly headers: Readonly<Record<string, string>>;
+  };
+  NotModified: { readonly headers: Readonly<Record<string, string>> };
+}>;
 
-  return result;
+interface ConditionalDefinition extends Data.TaggedEnum.WithGenerics<1> {
+  readonly taggedEnum: Conditional<this["A"]>;
+}
+
+export const Conditional = Data.taggedEnum<ConditionalDefinition>();
+
+/**
+ * A REST GET that sends the validators from an earlier response. GitHub answers
+ * 304 when nothing changed, which costs no primary rate limit. Decodes the body
+ * only on a 200. Never retries.
+ */
+export const conditional = Effect.fn("Api.conditional")(function* <
+  S extends Schema.Constraint,
+>(
+  request: Omit<PageRequest, "method">,
+  schema: S,
+  validators: Validators = {},
+): Effect.fn.Return<
+  Conditional<S["Type"]>,
+  GhError,
+  Gh | S["DecodingServices"]
+> {
+  const command = yield* prepare({
+    ...request,
+    method: "GET",
+    headers: {
+      ...request.headers,
+      ...(validators.etag !== undefined && {
+        "If-None-Match": validators.etag,
+      }),
+      ...(validators.lastModified !== undefined && {
+        "If-Modified-Since": validators.lastModified,
+      }),
+    },
+  });
+
+  const gh = yield* Gh;
+
+  // gh exits 1 on a 304, but still prints the status line and headers.
+  const stdout = yield* gh
+    .execute(
+      [...command.args, "--include", "--", command.endpoint],
+      command.options,
+    )
+    .pipe(
+      Effect.map((output) => output.stdout),
+      Effect.catchTag("GhCommandError", (error) =>
+        parseIncluded(error.stdout).status === 304
+          ? Effect.succeed(error.stdout)
+          : Effect.fail(error),
+      ),
+    );
+
+  const response = parseIncluded(stdout);
+
+  if (response.status === 304)
+    return Conditional.NotModified({ headers: response.headers });
+
+  const value = yield* Schema.decodeEffect(Schema.fromJsonString(schema))(
+    response.body,
+  ).pipe(Effect.mapError((cause) => new GhDecodeError({ cause })));
+
+  return Conditional.Modified({
+    value,
+    validators: {
+      ...(response.headers.etag !== undefined && {
+        etag: response.headers.etag,
+      }),
+      ...(response.headers["last-modified"] !== undefined && {
+        lastModified: response.headers["last-modified"],
+      }),
+    },
+    headers: response.headers,
+  });
 });
 
 /** Decodes one JSON response. Encoding and decoding failures are GhDecodeError; requests never retry. */

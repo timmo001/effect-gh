@@ -198,6 +198,33 @@ items: use an array schema for array endpoints, or an object schema for envelope
 such as `{ workflow_runs: [...] }`. It buffers all pages and does not provide a
 snapshot-consistency guarantee. For GraphQL, use [`Graphql.query`](#graphql).
 
+`Api.conditional(request, schema, validators?)` runs a REST GET that sends the
+`etag` and `lastModified` from an earlier response as `If-None-Match` and
+`If-Modified-Since`. It returns `Modified` with the decoded body and the
+validators for next time, or `NotModified` when GitHub answers 304, which costs
+no primary rate limit. Both carry the response headers, such as
+`x-poll-interval` for notifications. gh exits 1 on a 304; the SDK treats that
+as `NotModified` rather than an error. GraphQL has no conditional requests.
+
+```ts
+import { Api } from "@timmo001/effect-gh";
+import { Effect, Schema } from "effect";
+
+const poll = (validators: Api.Validators) =>
+  Api.conditional(
+    { endpoint: "notifications" },
+    Schema.Array(Schema.Struct({ id: Schema.String })),
+    validators,
+  ).pipe(
+    Effect.map(
+      Api.Conditional.$match({
+        Modified: ({ value, validators }) => ({ value, validators }),
+        NotModified: () => null,
+      }),
+    ),
+  );
+```
+
 ### Retries
 
 No SDK operation retries automatically. Mutations can have taken effect even
