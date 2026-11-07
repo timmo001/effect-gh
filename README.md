@@ -481,7 +481,14 @@ without access. Assets 404 until they are used in a post. github.com only.
   returns the classic OAuth scopes from the `x-oauth-scopes` header, or `None`
   for fine-grained tokens.
 - `Extension.list` parses `gh extension list` into name, repository and version.
-  `Extension.install` and `Extension.upgradeAll` accept `{ interactive: true }`.
+  `Extension.install`, `Extension.remove`, `Extension.upgrade` (one by name)
+  and `Extension.upgradeAll` accept `{ interactive: true }`; the upgrades take
+  `force` to include pinned extensions. `Extension.checkUpgrades` runs the
+  upgrade as a dry run and returns each extension's `status` (`upgraded`,
+  `current`, `pinned`, `local` or `failed`) with its `from` and `to` versions,
+  keeping a failed check as a `failed` entry. `Extension.parseUpgrades` reads
+  the same from a real upgrade's output, or `GhCommandError.stdout` after one
+  failed.
 - `Label.list` (with `search`) decodes name, colour and description.
   `Label.create` (with `force` to update), `Label.edit` (with `newName` to
   rename in place), `Label.remove` and `Label.clone` (with `force` to

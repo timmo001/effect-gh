@@ -41,6 +41,7 @@ const commands: readonly Command[] = [
   { name: "auth-token", args: ["auth", "token"] },
   { name: "extension-install", args: ["extension", "install"] },
   { name: "extension-list", args: ["extension", "list"] },
+  { name: "extension-remove", args: ["extension", "remove"] },
   { name: "extension-upgrade", args: ["extension", "upgrade"] },
   { name: "issue-artifact-create", args: ["issue", "artifact", "create"] },
   { name: "issue-artifact-delete", args: ["issue", "artifact", "delete"] },

@@ -43,7 +43,7 @@ export const list = Effect.fn("Extension.list")(function* (
   return parseList((yield* gh.execute(["extension", "list"], options)).stdout);
 });
 
-/** Options for {@link install} and {@link upgradeAll}. */
+/** Options for {@link install}, {@link remove} and the upgrades. */
 export interface InstallOptions extends Omit<
   GhOptions,
   "stdin" | "maxOutputBytes"
@@ -68,9 +68,167 @@ export const install = Effect.fn("Extension.install")(function* (
   yield* run(["extension", "install", repository], options);
 });
 
-/** Upgrade every installed extension. */
-export const upgradeAll = Effect.fn("Extension.upgradeAll")(function* (
+/** Remove an installed extension by name, such as `dash`. */
+export const remove = Effect.fn("Extension.remove")(function* (
+  name: string,
   options?: InstallOptions,
 ) {
-  yield* run(["extension", "upgrade", "--all"], options);
+  yield* run(["extension", "remove", name], options);
+});
+
+/** Options for {@link upgrade} and {@link upgradeAll}. */
+export interface UpgradeOptions extends InstallOptions {
+  /** Upgrade pinned extensions too, resetting git extensions to their remote's HEAD. */
+  readonly force?: boolean;
+}
+
+const upgradeArgs = (
+  target: string,
+  options: { readonly force?: boolean } | undefined,
+) => [
+  "extension",
+  "upgrade",
+  target,
+  ...(options?.force === true ? ["--force"] : []),
+];
+
+/** Upgrade one installed extension by name, such as `dash`. */
+export const upgrade = Effect.fn("Extension.upgrade")(function* (
+  name: string,
+  options?: UpgradeOptions,
+) {
+  yield* run(upgradeArgs(name, options), options);
+});
+
+/** Upgrade every installed extension. */
+export const upgradeAll = Effect.fn("Extension.upgradeAll")(function* (
+  options?: UpgradeOptions,
+) {
+  yield* run(upgradeArgs("--all", options), options);
+});
+
+/** What `gh extension upgrade` did, or would do in a dry run, with one extension. */
+export interface Upgrade {
+  readonly name: string;
+  /**
+   * `upgraded` (or would be, in a dry run), `current` when already up to date,
+   * `pinned` or `local` when gh won't upgrade it, or `failed`.
+   */
+  readonly status: "upgraded" | "current" | "pinned" | "local" | "failed";
+  /** Version before the upgrade; empty unless `upgraded`. */
+  readonly from: string;
+  /** Version after the upgrade; empty unless `upgraded`. */
+  readonly to: string;
+  /** gh's message for a failure; empty otherwise. */
+  readonly reason: string;
+}
+
+const upgradeLine = /^\[\s*(.+?)\]: (.*)$/;
+const upgradedMessage = /^(?:would have )?upgraded from (\S*) to (\S*)$/;
+
+const messageStatus = (message: string): Upgrade["status"] => {
+  switch (message) {
+    case "already up to date":
+      return "current";
+    case "pinned extensions can not be upgraded":
+      return "pinned";
+    case "local extensions can not be upgraded":
+      return "local";
+    default:
+      return "failed";
+  }
+};
+
+const parseUpgradeLine = (name: string, message: string): Upgrade => {
+  const upgraded = upgradedMessage.exec(message);
+
+  if (upgraded !== null)
+    return {
+      name,
+      status: "upgraded",
+      from: upgraded[1] ?? "",
+      to: upgraded[2] ?? "",
+      reason: "",
+    };
+
+  const status = messageStatus(message);
+
+  return {
+    name,
+    status,
+    from: "",
+    to: "",
+    reason: status === "failed" ? message : "",
+  };
+};
+
+/**
+ * Parse `gh extension upgrade` output: one `[name]: message` line per
+ * extension, with names padded to the longest. A failure's message can run on
+ * to further lines, which join its `reason`. gh exits 1 after any failure, so
+ * pass `GhCommandError.stdout` here to see what still upgraded.
+ */
+export const parseUpgrades = (output: string): ReadonlyArray<Upgrade> => {
+  const upgrades: Array<Upgrade> = [];
+
+  for (const line of output.split("\n")) {
+    const match = upgradeLine.exec(line);
+
+    if (match !== null) {
+      upgrades.push(parseUpgradeLine(match[1] ?? "", match[2] ?? ""));
+      continue;
+    }
+
+    const last = upgrades.at(-1);
+
+    if (last?.status === "failed" && line.trim() !== "")
+      upgrades[upgrades.length - 1] = {
+        ...last,
+        reason: `${last.reason}\n${line}`,
+      };
+  }
+
+  return upgrades;
+};
+
+/** Options for {@link checkUpgrades}. */
+export interface CheckUpgradesOptions extends Omit<
+  GhOptions,
+  "stdin" | "maxOutputBytes"
+> {
+  /** Check one extension by name instead of every installed one. */
+  readonly name?: string;
+  /** Count pinned extensions as upgradable. */
+  readonly force?: boolean;
+}
+
+/**
+ * What `gh extension upgrade --dry-run` would do with every installed
+ * extension, or one with `name`, without changing anything. An extension whose
+ * check failed comes back as `failed` rather than failing the whole check, and
+ * no installed extensions give an empty list.
+ */
+export const checkUpgrades = Effect.fn("Extension.checkUpgrades")(function* (
+  options?: CheckUpgradesOptions,
+) {
+  const gh = yield* Gh;
+
+  return yield* gh
+    .execute(
+      [...upgradeArgs(options?.name ?? "--all", options), "--dry-run"],
+      options,
+    )
+    .pipe(
+      Effect.map((output) => parseUpgrades(output.stdout)),
+      Effect.catchTag("GhCommandError", (error) => {
+        if (error.stderr.includes("no extensions installed"))
+          return Effect.succeed<ReadonlyArray<Upgrade>>([]);
+
+        const upgrades = parseUpgrades(error.stdout);
+
+        return upgrades.some((upgrade) => upgrade.status === "failed")
+          ? Effect.succeed(upgrades)
+          : Effect.fail(error);
+      }),
+    );
 });
