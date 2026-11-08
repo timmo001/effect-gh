@@ -4,7 +4,7 @@ import { ChildProcessSpawner } from "effect/process";
 import { GhDecodeError } from "../src/errors.js";
 import { layer } from "../src/gh.js";
 import * as Repository from "../src/repository.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 const repository = {
   nameWithOwner: "owner/repo",
@@ -109,4 +109,190 @@ test("repository view propagates command failure before decoding", async () => {
       });
     }),
   );
+});
+
+test("create passes the visibility and the name after --, and returns the URL", async () => {
+  const gh = scriptedSpawner([{ stdout: "https://github.com/owner/new\n" }]);
+
+  expect(
+    await gh.run(
+      Repository.create({
+        name: "owner/new",
+        visibility: "private",
+        description: "A repo",
+        addReadme: true,
+        license: "mit",
+      }),
+    ),
+  ).toEqual({ url: "https://github.com/owner/new" });
+  expect(gh.args()).toEqual([
+    [
+      "repo",
+      "create",
+      "--private",
+      "--description",
+      "A repo",
+      "--add-readme",
+      "--license",
+      "mit",
+      "--",
+      "owner/new",
+    ],
+  ]);
+});
+
+test("edit writes booleans as --flag=value and accepts the visibility consequences", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(
+    Repository.edit({
+      repo: "owner/repo",
+      visibility: "public",
+      addTopics: ["a", "b"],
+      enableWiki: false,
+      deleteBranchOnMerge: true,
+    }),
+  );
+  expect(gh.args()).toEqual([
+    [
+      "repo",
+      "edit",
+      "--visibility",
+      "public",
+      "--accept-visibility-change-consequences",
+      "--add-topic",
+      "a",
+      "--add-topic",
+      "b",
+      "--delete-branch-on-merge=true",
+      "--enable-wiki=false",
+      "--",
+      "owner/repo",
+    ],
+  ]);
+});
+
+test("remove, archive, unarchive and rename skip the prompt", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(Repository.remove({ repo: "owner/repo" }));
+  await gh.run(Repository.archive({ repo: "owner/repo" }));
+  await gh.run(Repository.unarchive());
+  await gh.run(Repository.rename({ repo: "owner/repo", newName: "other" }));
+  expect(gh.args()).toEqual([
+    ["repo", "delete", "--yes", "--", "owner/repo"],
+    ["repo", "archive", "--yes", "--", "owner/repo"],
+    ["repo", "unarchive", "--yes"],
+    ["repo", "rename", "--yes", "--repo", "owner/repo", "--", "other"],
+  ]);
+});
+
+test("fork never prompts and keeps git flags after --", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(
+    Repository.fork({
+      repo: "owner/repo",
+      org: "team",
+      clone: true,
+      gitArgs: ["--depth", "1"],
+    }),
+  );
+  await gh.run(Repository.fork());
+  expect(gh.args()).toEqual([
+    [
+      "repo",
+      "fork",
+      "owner/repo",
+      "--org",
+      "team",
+      "--clone=true",
+      "--remote=false",
+      "--",
+      "--depth",
+      "1",
+    ],
+    ["repo", "fork", "--clone=false", "--remote=false"],
+  ]);
+});
+
+test("list selects its fields and passes filters as flags", async () => {
+  const item = {
+    name: "repo",
+    nameWithOwner: "owner/repo",
+    description: "",
+    url: "https://github.com/owner/repo",
+    visibility: "PUBLIC",
+    isPrivate: false,
+    isFork: false,
+    isArchived: false,
+    updatedAt: "2026-10-26T18:02:47Z",
+  };
+
+  const gh = scriptedSpawner([{ stdout: JSON.stringify([item]) }]);
+
+  expect(
+    await gh.run(
+      Repository.list({
+        owner: "owner",
+        limit: 5,
+        fork: false,
+        archived: false,
+        topics: ["effect"],
+      }),
+    ),
+  ).toEqual([item]);
+  expect(gh.args()).toEqual([
+    [
+      "repo",
+      "list",
+      "--limit",
+      "5",
+      "--source",
+      "--no-archived",
+      "--topic",
+      "effect",
+      "--json",
+      "name,nameWithOwner,description,url,visibility,isPrivate,isFork,isArchived,updatedAt",
+      "--",
+      "owner",
+    ],
+  ]);
+});
+
+test("setDefault, unsetDefault, viewDefault and sync pass their flags", async () => {
+  const gh = scriptedSpawner([
+    { stdout: "" },
+    { stdout: "" },
+    { stdout: "owner/repo\n" },
+    { stdout: "" },
+  ]);
+
+  await gh.run(Repository.setDefault({ repo: "owner/repo" }));
+  await gh.run(Repository.unsetDefault());
+  expect(await gh.run(Repository.viewDefault())).toBe("owner/repo");
+  await gh.run(
+    Repository.sync({
+      repo: "owner/fork",
+      source: "owner/repo",
+      branch: "main",
+      force: true,
+    }),
+  );
+  expect(gh.args()).toEqual([
+    ["repo", "set-default", "--", "owner/repo"],
+    ["repo", "set-default", "--unset"],
+    ["repo", "set-default", "--view"],
+    [
+      "repo",
+      "sync",
+      "--source",
+      "owner/repo",
+      "--branch",
+      "main",
+      "--force",
+      "--",
+      "owner/fork",
+    ],
+  ]);
 });
