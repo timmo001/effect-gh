@@ -98,6 +98,60 @@ const watchOptions = Schema.Struct({
 
 export interface WatchOptions extends Schema.Schema.Type<typeof watchOptions> {}
 
+const cancelOptions = Schema.Struct({
+  repo: repository,
+  runId: positiveInteger,
+  force: Schema.optionalKey(Schema.Boolean),
+});
+
+export interface CancelOptions extends Schema.Schema.Type<
+  typeof cancelOptions
+> {}
+
+const downloadOptions = Schema.Struct({
+  repo: repository,
+  runId: positiveInteger,
+  directory: Schema.NonEmptyString,
+  /** Artifact names; any match is downloaded. */
+  names: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
+  /** Artifact glob patterns; any match is downloaded. */
+  patterns: Schema.optionalKey(Schema.Array(Schema.NonEmptyString)),
+});
+
+export interface DownloadOptions extends Schema.Schema.Type<
+  typeof downloadOptions
+> {}
+
+const listWorkflowsOptions = Schema.Struct({
+  repo: repository,
+  limit: Schema.optionalKey(positiveInteger),
+  all: Schema.optionalKey(Schema.Boolean),
+});
+
+export interface ListWorkflowsOptions extends Schema.Schema.Type<
+  typeof listWorkflowsOptions
+> {}
+
+const workflowSelector = Schema.Struct({
+  repo: repository,
+  /** File name, workflow name or ID. */
+  workflow: Schema.NonEmptyString,
+});
+
+export interface WorkflowSelector extends Schema.Schema.Type<
+  typeof workflowSelector
+> {}
+
+const viewWorkflowOptions = Schema.Struct({
+  ...workflowSelector.fields,
+  ref: Schema.optionalKey(Schema.NonEmptyString),
+  yaml: Schema.optionalKey(Schema.Boolean),
+});
+
+export interface ViewWorkflowOptions extends Schema.Schema.Type<
+  typeof viewWorkflowOptions
+> {}
+
 const decodeOptions = Effect.fn("Workflow.decodeOptions")(function* <
   S extends Schema.Constraint,
 >(schema: S, input: S["Type"]) {
@@ -280,6 +334,139 @@ export const open = Effect.fn("Workflow.open")(function* (
 
   yield* gh.execute(
     ["run", "view", String(query.runId), "--repo", query.repo, "--web"],
+    options,
+  );
+});
+
+/** Cancel a run, or force-cancel it with `force`. */
+export const cancel = Effect.fn("Workflow.cancel")(function* (
+  input: CancelOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(cancelOptions, input);
+  const gh = yield* Gh;
+  const args = ["run", "cancel", String(query.runId), "--repo", query.repo];
+
+  if (query.force) args.push("--force");
+  yield* gh.execute(args, options);
+});
+
+/** Delete a run. */
+export const remove = Effect.fn("Workflow.remove")(function* (
+  input: OpenOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(openOptions, input);
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["run", "delete", String(query.runId), "--repo", query.repo],
+    options,
+  );
+});
+
+/**
+ * Download a run's artifacts into `directory`, filtered by artifact `names`
+ * or glob `patterns`. Each artifact is extracted into its own directory unless
+ * only one is selected.
+ */
+export const download = Effect.fn("Workflow.download")(function* (
+  input: DownloadOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(downloadOptions, input);
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "run",
+      "download",
+      String(query.runId),
+      "--repo",
+      query.repo,
+      "--dir",
+      query.directory,
+      ...(query.names ?? []).flatMap((name) => ["--name", name]),
+      ...(query.patterns ?? []).flatMap((pattern) => ["--pattern", pattern]),
+    ],
+    options,
+  );
+});
+
+/** A workflow as `gh workflow list` returns it. */
+export const WorkflowItem = Schema.Struct({
+  id: positiveInteger,
+  name: Schema.String,
+  path: Schema.String,
+  state: Schema.String,
+});
+
+export interface WorkflowItem extends Schema.Schema.Type<typeof WorkflowItem> {}
+
+/** List a repository's workflows, at most `limit` (default 50), with disabled ones when `all` is set. */
+export const listWorkflows = Effect.fn("Workflow.listWorkflows")(function* (
+  input: ListWorkflowsOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(listWorkflowsOptions, input);
+  const gh = yield* Gh;
+
+  const args = [
+    "workflow",
+    "list",
+    "--repo",
+    query.repo,
+    "--limit",
+    String(query.limit ?? 50),
+    "--json",
+    Object.keys(WorkflowItem.fields).join(","),
+  ];
+
+  if (query.all) args.push("--all");
+
+  return yield* gh.json(args, Schema.Array(WorkflowItem), options);
+});
+
+/** The workflow summary text, or its YAML with `yaml`, optionally at a branch or tag `ref`. */
+export const viewWorkflow = Effect.fn("Workflow.viewWorkflow")(function* (
+  input: ViewWorkflowOptions,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(viewWorkflowOptions, input);
+  const gh = yield* Gh;
+  const args = ["workflow", "view", "--repo", query.repo];
+
+  if (query.ref !== undefined) args.push("--ref", query.ref);
+
+  if (query.yaml) args.push("--yaml");
+
+  return (yield* gh.execute([...args, "--", query.workflow], options)).stdout;
+});
+
+/** Enable a workflow by file name, name or ID. */
+export const enable = Effect.fn("Workflow.enable")(function* (
+  input: WorkflowSelector,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(workflowSelector, input);
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["workflow", "enable", "--repo", query.repo, "--", query.workflow],
+    options,
+  );
+});
+
+/** Disable a workflow by file name, name or ID. */
+export const disable = Effect.fn("Workflow.disable")(function* (
+  input: WorkflowSelector,
+  options?: GhOptions,
+) {
+  const query = yield* decodeOptions(workflowSelector, input);
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["workflow", "disable", "--repo", query.repo, "--", query.workflow],
     options,
   );
 });
