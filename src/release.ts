@@ -3,13 +3,22 @@ import { Gh, type GhOptions } from "./gh.js";
 
 /** Every `gh release view --json` field the typed read can select. */
 export const Fields = Schema.Struct({
+  id: Schema.String,
+  databaseId: Schema.Int,
   tagName: Schema.String,
   name: Schema.String,
   url: Schema.String,
+  apiUrl: Schema.String,
+  uploadUrl: Schema.String,
+  tarballUrl: Schema.String,
+  zipballUrl: Schema.String,
   body: Schema.String,
+  author: Schema.Struct({ id: Schema.String, login: Schema.String }),
   isDraft: Schema.Boolean,
   isPrerelease: Schema.Boolean,
+  isImmutable: Schema.Boolean,
   targetCommitish: Schema.String,
+  createdAt: Schema.String,
   publishedAt: Schema.NullOr(Schema.String),
   assets: Schema.Array(
     Schema.Struct({ name: Schema.String, url: Schema.String }),
@@ -62,6 +71,105 @@ export const exists = Effect.fn("Release.exists")(function* (
         ? Effect.succeed(false)
         : Effect.fail(error),
     ),
+  );
+});
+
+/** A release as `gh release list` returns it. */
+export const ListItem = Schema.Struct({
+  tagName: Schema.String,
+  /** Empty when the release has no title. */
+  name: Schema.String,
+  isDraft: Schema.Boolean,
+  isPrerelease: Schema.Boolean,
+  isLatest: Schema.Boolean,
+  isImmutable: Schema.Boolean,
+  createdAt: Schema.String,
+  /** A zero time (`0001-01-01T00:00:00Z`) for drafts. */
+  publishedAt: Schema.String,
+});
+
+export interface ListItem extends Schema.Schema.Type<typeof ListItem> {}
+
+/** Input for {@link list}. */
+export interface ListInput {
+  readonly repo?: string;
+  /** At most this many releases, 30 by default. */
+  readonly limit?: number;
+  readonly excludeDrafts?: boolean;
+  readonly excludePrereleases?: boolean;
+  /** By creation time, newest first (`desc`) by default. */
+  readonly order?: "asc" | "desc";
+}
+
+/** List a repository's releases. */
+export const list = Effect.fn("Release.list")(function* (
+  input: ListInput = {},
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  return yield* gh.json(
+    [
+      "release",
+      "list",
+      ...repoArgs(input.repo),
+      ...(input.limit === undefined ? [] : ["--limit", String(input.limit)]),
+      ...(input.excludeDrafts ? ["--exclude-drafts"] : []),
+      ...(input.excludePrereleases ? ["--exclude-pre-releases"] : []),
+      ...(input.order === undefined ? [] : ["--order", input.order]),
+      "--json",
+      Object.keys(ListItem.fields).join(","),
+    ],
+    Schema.Array(ListItem),
+    options,
+  );
+});
+
+/** Delete a release without prompting, and its tag too with `cleanupTag`. */
+export const remove = Effect.fn("Release.remove")(function* (
+  input: {
+    readonly repo?: string;
+    readonly tag: string;
+    readonly cleanupTag?: boolean;
+  },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "release",
+      "delete",
+      input.tag,
+      ...repoArgs(input.repo),
+      ...(input.cleanupTag ? ["--cleanup-tag"] : []),
+      "--yes",
+    ],
+    options,
+  );
+});
+
+/** Delete one asset from a release without prompting. */
+export const removeAsset = Effect.fn("Release.removeAsset")(function* (
+  input: {
+    readonly repo?: string;
+    readonly tag: string;
+    readonly asset: string;
+  },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "release",
+      "delete-asset",
+      input.tag,
+      input.asset,
+      ...repoArgs(input.repo),
+      "--yes",
+    ],
+    options,
   );
 });
 

@@ -3,7 +3,7 @@ import { Effect, Layer } from "effect";
 import { ChildProcessSpawner } from "effect/process";
 import { layer } from "../src/gh.js";
 import * as Release from "../src/release.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 const failing = (stderr: string) =>
   fakeSpawner({
@@ -76,4 +76,66 @@ test("create passes assets after the tag and settings as flags", async () => {
       });
     }),
   );
+});
+
+test("list selects its fields and passes filters as flags", async () => {
+  const release = {
+    tagName: "v1",
+    name: "",
+    isDraft: true,
+    isPrerelease: false,
+    isLatest: false,
+    isImmutable: false,
+    createdAt: "2026-10-26T18:02:47Z",
+    publishedAt: "0001-01-01T00:00:00Z",
+  };
+
+  const gh = scriptedSpawner([{ stdout: JSON.stringify([release]) }]);
+
+  expect(
+    await gh.run(
+      Release.list({
+        repo: "owner/repo",
+        limit: 5,
+        excludePrereleases: true,
+        order: "asc",
+      }),
+    ),
+  ).toEqual([release]);
+  expect(gh.args()).toEqual([
+    [
+      "release",
+      "list",
+      "--repo",
+      "owner/repo",
+      "--limit",
+      "5",
+      "--exclude-pre-releases",
+      "--order",
+      "asc",
+      "--json",
+      "tagName,name,isDraft,isPrerelease,isLatest,isImmutable,createdAt,publishedAt",
+    ],
+  ]);
+});
+
+test("remove and removeAsset skip the prompt", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(Release.remove({ tag: "v1", cleanupTag: true }));
+  await gh.run(
+    Release.removeAsset({ repo: "owner/repo", tag: "v1", asset: "a.tar.gz" }),
+  );
+  expect(gh.args()).toEqual([
+    ["release", "delete", "v1", "--cleanup-tag", "--yes"],
+    [
+      "release",
+      "delete-asset",
+      "v1",
+      "a.tar.gz",
+      "--repo",
+      "owner/repo",
+      "--yes",
+    ],
+  ]);
 });

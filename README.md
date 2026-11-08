@@ -495,6 +495,10 @@ without access. Assets 404 until they are used in a post. github.com only.
   overwrite) cover the rest.
 - `Release.view` decodes selected fields, `Release.exists` checks a tag, and
   `create`, `edit`, `upload` and `download` cover publishing.
+  `Release.list` returns tag, name, draft, prerelease, latest and immutable
+  flags and times, with `limit`, `excludeDrafts`, `excludePrereleases` and
+  `order`. `Release.remove` deletes a release (and its tag with `cleanupTag`)
+  and `Release.removeAsset` one asset, both without a prompt.
 - `Search.code` returns matching paths with their repositories.
 - `Cli.version` returns the installed gh version.
 
