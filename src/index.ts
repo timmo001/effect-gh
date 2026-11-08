@@ -60,3 +60,41 @@ export * as Discussion from "./discussion.js";
 export * as Comment from "./comment.js";
 
 export * as Attachment from "./attachment.js";
+
+export * as AgentTask from "./agent-task.js";
+
+export * as Alias from "./alias.js";
+
+export * as Attestation from "./attestation.js";
+
+export * as Autolink from "./autolink.js";
+
+export * as Cache from "./cache.js";
+
+export * as Codespace from "./codespace.js";
+
+export * as Config from "./config.js";
+
+export * as DeployKey from "./deploy-key.js";
+
+export * as Gist from "./gist.js";
+
+export * as GpgKey from "./gpg-key.js";
+
+export * as Org from "./org.js";
+
+export * as Project from "./project.js";
+
+export * as Ruleset from "./ruleset.js";
+
+export * as Secret from "./secret.js";
+
+export * as Skill from "./skill.js";
+
+export * as SshKey from "./ssh-key.js";
+
+export * as Status from "./status.js";
+
+export * as Template from "./template.js";
+
+export * as Variable from "./variable.js";

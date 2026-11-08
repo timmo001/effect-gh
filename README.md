@@ -294,6 +294,14 @@ and `comment` (and `PullRequest.create`, `edit` and `comment`) upload image and 
 `attachments` through `--attach`, as `<file>` or `<file>#<alt text>`. When some
 uploads fail, gh still saves the rest and exits non-zero.
 
+`Issue.remove` deletes without a prompt, and can't be undone. `lock` takes an
+optional `reason` (`off_topic`, `resolved`, `spam` or `too_heated`), `unlock`,
+`pin` and `unpin` take the issue, and `transfer` returns the new issue's URL.
+`Issue.linkedBranches` lists an issue's linked branches as `{ name, url }`, and
+`Issue.develop` creates one (with `base`, `name`, `branchRepo`, `checkout` and
+`worktree`) and returns its URL. `Issue.status` returns the `createdBy`,
+`assigned` and `mentioned` issues.
+
 `Repository.clone` captures output, so pass non-interactive git settings in
 `env`. `Repository.cloneInteractive` clones on the terminal. Both accept extra
 `gitArgs`. `Repository.browse` opens a repository or one of its sections.
@@ -301,6 +309,20 @@ uploads fail, gh still saves the rest and exits non-zero.
 `Repository.readDir({ repo?, path?, ref? })` lists a directory's name, path,
 type, size, Git SHA and mode, both without cloning. They wrap gh's preview
 `repo read-file` and `read-dir`.
+
+`Repository.create` takes a `visibility` and returns the new URL. `edit` changes
+only the settings given, with booleans such as `enableWiki: false`; setting a
+`visibility` also accepts gh's visibility-change warning. `remove` (needs an
+explicit `repo` and the `delete_repo` scope), `archive`, `unarchive` and `rename`
+skip the prompt. `fork` never clones or adds a remote unless asked. `list`
+decodes a user's or organisation's repositories. `setDefault`, `unsetDefault`,
+`viewDefault` and `sync` cover the rest.
+
+`Autolink` (`create`, `remove`, `list`, `view`) and `DeployKey` (`add`,
+`remove`, `list`) manage a repository's autolinks and deploy keys; the lists
+and `Autolink.view` decode gh's JSON. `Template.gitignoreList`, `gitignoreView`,
+`licenseList` and `licenseView` return gh's text. `Ruleset.list`, `view` and
+`check` return gh's text too, since `gh ruleset` has no JSON output.
 
 ### Issue artifacts
 
@@ -378,6 +400,16 @@ verbatim, escape sequences included. `close` (with a `comment` and
 `deleteBranch`), `reopen` (with a `comment`), `ready` (back to draft with
 `undo`) and `comment` change its state or add a comment.
 
+`PullRequest.checkout` checks a pull request out in the `cwd` of its options,
+with `branch`, `detach`, `force`, `recurseSubmodules` and `worktree`. `lock`
+(with a `reason`) and `unlock` control its conversation. `revert` opens a revert
+pull request and returns its URL. `review` posts an `approve`, `request-changes`
+or `comment` review with an optional `body`, which gh needs for the latter two.
+`updateBranch` merges the base branch in, or rebases with `method: "rebase"`.
+`status` returns `{ currentBranch, createdBy, needsReview }`; `currentBranch`
+is missing when the current branch has no pull request, or when `repository`
+is given.
+
 ## Workflow runs
 
 ```ts
@@ -415,6 +447,32 @@ page envelopes or attempt-specific jobs.
 `Workflow.rerun` reruns a run, only its failed jobs (`failedOnly`) or one `job`,
 and `Workflow.open` opens a run in the browser.
 
+`Workflow.cancel` (with `force`), `Workflow.remove` and `Workflow.download`
+(into a `directory`, by artifact `names` or `patterns`) manage a run.
+`Workflow.listWorkflows` (JSON, `all` includes disabled), `Workflow.viewWorkflow`
+(text, or YAML with `yaml`), `Workflow.enable` and `Workflow.disable` manage
+workflows by file name, name or ID.
+
+### Caches, secrets and variables
+
+```ts
+import { Cache, Secret, Variable } from "@timmo001/effect-gh";
+
+const caches = Cache.list({ repo: "owner/repo", key: "node-" });
+const removed = Cache.remove({ repo: "owner/repo", all: true });
+const secrets = Secret.list({ organization: "acme" });
+const stored = Secret.set({ repo: "owner/repo", name: "TOKEN", value });
+const vars = Variable.list({ environment: "prod" });
+const mode = Variable.get({ repo: "owner/repo", name: "MODE" });
+```
+
+`Cache.remove` takes an `id`, a `key` (with `ref`) or `all`. `Secret` and
+`Variable` act on the repository by default, or an `environment`, an
+`organization` (with `visibility` and `repos`) and, for secrets, the `user`
+or an `app`. Values are sent through stdin, never as arguments, and secret
+lists return names only. All three have `list`, `set` and `remove` as
+applicable; the repo is optional and defaults to the working directory's.
+
 ## Reviews, comments and discussions
 
 ```ts
@@ -450,7 +508,8 @@ const discussions = Discussion.list({ repo: "owner/repo", limit: 10 });
   `kind: "review"` for inline review comments.
 - `Discussion.view`, `list` (open by default, at most 30), `comments` (with
   their first 100 replies), `comment` and `reply` (to a top-level comment's
-  node ID) use GraphQL.
+  node ID) use GraphQL. `Discussion.create` and `edit` run the preview
+  `gh discussion` commands non-interactively.
 
 Selectors are validated before spawning and fail with `GhInvalidOptionsError`.
 Mutations never retry.
@@ -484,6 +543,23 @@ without access. Assets 404 until they are used in a post. github.com only.
   `hasToken` drains the token without keeping it. `Auth.scopes(hostname?)`
   returns the classic OAuth scopes from the `x-oauth-scopes` header, or `None`
   for fine-grained tokens.
+  `Auth.login({ token })` logs in with `--with-token`, sending the token on
+  stdin. `Auth.logout`, `Auth.setupGit` and `Auth.switchAccount` take
+  `hostname` and `user`. `Auth.refresh` adds, removes or resets scopes and runs
+  on the terminal.
+- `Config.get`, `Config.set` (both with `host`), `Config.list` (parsed into
+  `key` and `value`) and `Config.clearCache` cover gh's settings.
+- `Alias.list` returns gh's YAML text. `Alias.set` sends the expansion on
+  stdin, `Alias.remove` takes a `name` or `{ all: true }`, and
+  `Alias.importAliases` takes a `file` or `yaml` text.
+- `Gist.create` takes `files` or `content` and returns the URL. `Gist.list`
+  parses the table, `Gist.view` returns raw content, `Gist.viewFiles` the file
+  names. `Gist.edit`, `Gist.rename`, `Gist.remove` and `Gist.clone` cover the
+  rest.
+- `SshKey` and `GpgKey` have `add` (a `keyFile` or `key` text), `remove`
+  without a prompt, and `list`, which returns gh's text.
+- `Org.list` returns the logins of your organizations. `Status.get` returns
+  gh's status report text.
 - `Extension.list` parses `gh extension list` into name, repository and version.
   `Extension.install`, `Extension.remove`, `Extension.upgrade` (one by name)
   and `Extension.upgradeAll` accept `{ interactive: true }`; the upgrades take
@@ -504,7 +580,51 @@ without access. Assets 404 until they are used in a post. github.com only.
   `order`. `Release.remove` deletes a release (and its tag with `cleanupTag`)
   and `Release.removeAsset` one asset, both without a prompt.
 - `Search.code` returns matching paths with their repositories.
+  `Search.commits`, `issues`, `prs` and `repos` decode a fixed set of fields
+  and take the main filters, with `query` after `--`.
+- `Release.verify` and `Release.verifyAsset` check a release's attestation,
+  failing when it doesn't verify.
+- `Attestation.download` writes `sha256-<digest>.jsonl` into `cwd`.
+  `Attestation.verify` takes an `owner` or `repo` and decodes each attestation
+  and verification result. `Attestation.trustedRoot` returns the JSON lines.
+- `Extension.search` decodes repositories, `Extension.exec` returns an
+  extension's stdout and `Extension.create` scaffolds one.
+- `AgentTask.create` (a `description` or `file`), `list` and `view` cover the
+  preview `gh agent-task` commands.
+- `Skill.list` and `search` decode their JSON. `Skill.install` needs the
+  `skill` named or `all` set, plus `agent` and `scope`, and overwrites
+  installed skills only with `force`.
+  `Skill.update`, `preview` and `publish` return gh's text; `update` checks
+  every skill unless `skills` is given.
 - `Cli.version` returns the installed gh version.
+
+## Projects and codespaces
+
+- `Project.view`, `list` (with `owner`, `limit`, `closed`), `create`, `copy`,
+  `edit`, `close` (with `undo` to reopen), `remove` and `markTemplate` decode
+  gh's `--format json` project. Pass `{ number, owner }`, where `owner` is a
+  login or `@me`. `Project.link` and `unlink` take a `repo` or `team`.
+- `Project.fieldList`, `fieldCreate` and `fieldDelete` decode fields and their
+  single select options. `Project.itemList` (with `query` and `limit`),
+  `itemAdd`, `itemCreate`, `itemArchive` (with `undo`), `itemDelete` and
+  `itemEdit` cover items. `itemEdit` selects by `number`, `url` and `field`, or
+  by node IDs, and sets one value or `clear`s it. `itemList` decodes each
+  item's `content` but leaves its field values undecoded.
+- `Codespace.list` and `Codespace.view` decode selected fields, and
+  `Codespace.ports` lists forwarded ports. Operations name a codespace with
+  `{ codespace }`.
+- `Codespace.create` returns the new name, and `edit`, `stop`, `rebuild`
+  (with `full`), `cp` and `portsVisibility` return nothing. `Codespace.logs`
+  returns the log text. `Codespace.remove` deletes by `codespace`, `all`, `days`
+  or `repo`; codespaces with unsaved changes need `force`.
+
+## Commands left out on purpose
+
+These gh commands only make sense on a terminal or in a browser, so the SDK
+doesn't wrap them: `browse`, `completion`, `copilot`, `licenses`, `preview`,
+`extension browse`, the interactive `auth login` (use `Auth.login` with a
+token), `codespace ssh`, `code`, `jupyter` and `ports forward`, and
+`workflow view --web`. Use `Gh.interactive` to run one on the terminal.
 
 ## Consumer examples
 
