@@ -38,6 +38,8 @@ jobs:
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       node-version: ${{ needs.tools.outputs.node }}
+      # The root lint is type-aware over the OpenCode plugin too
+      check-command: bun install --frozen-lockfile --cwd opencode-plugin && bun run check
 
   jsr:
     needs: tools
@@ -47,4 +49,4 @@ jobs:
     uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@de4221cd9b24ad3d61aa1db87b6e4864cf56d5a1 # 20261027.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
-      check-command: bun run --parallel --no-exit-on-error check build
+      check-command: bun install --frozen-lockfile --cwd opencode-plugin && bun run --parallel --no-exit-on-error check build
