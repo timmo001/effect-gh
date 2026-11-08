@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { Tool } from "@opencode/schema/tool";
 import {
@@ -40,7 +41,17 @@ import {
   Variable,
   Workflow,
 } from "@timmo001/effect-gh";
-import { type Duration, Effect, Layer, Option, Schema, Struct } from "effect";
+import {
+  type Duration,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Predicate,
+  Schema,
+  SchemaAST,
+  Struct,
+} from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import {
   type ClientTool,
@@ -125,8 +136,91 @@ const preview = (input: ToolInput) => {
   return text.length > 4000 ? `${text.slice(0, 4000)}\n…` : text;
 };
 
+/** Markdown fields a tool also takes from a local file, as `<field>File`. */
+const textFields = ["body", "notes"];
+
+/** A tool input's fields, which decode without services. */
+type InputFields = Readonly<Record<string, Schema.Codec<unknown>>>;
+
+/**
+ * A tool's input with `<field>File` beside each top-level Markdown field, which
+ * becomes optional since either one gives it. Long text is easier to write to a
+ * file than to quote in a call.
+ */
+const withTextFiles = (input: Schema.Struct<InputFields>) => {
+  const names = textFields.filter((name) => {
+    const field = input.fields[name];
+
+    return field !== undefined && SchemaAST.isString(field.ast);
+  });
+
+  if (names.length === 0) return { names, input };
+
+  const fields = Object.fromEntries(
+    names.flatMap((name) => {
+      const field = input.fields[name];
+
+      if (field === undefined) return [];
+
+      return [
+        [
+          name,
+          SchemaAST.isOptional(field.ast) ? field : Schema.optionalKey(field),
+        ],
+        [
+          `${name}File`,
+          Schema.optionalKey(Schema.String).annotate({
+            description: `A local file to read ${name} from instead, relative to the session directory. Pass ${name} or ${name}File`,
+          }),
+        ],
+      ];
+    }),
+  );
+
+  return { names, input: Schema.Struct({ ...input.fields, ...fields }) };
+};
+
+/** Replace each `<field>File` with the file's contents as `<field>`. */
+const readTextFiles = (
+  input: ToolInput,
+  names: readonly string[],
+  directory: string,
+) =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+
+    const read = yield* Effect.forEach(names, (name) => {
+      const file = input[`${name}File`];
+
+      if (!Predicate.isString(file)) return Effect.succeed([]);
+
+      if (input[name] !== undefined)
+        return Effect.fail(
+          new Tool.Error({ message: `Pass ${name} or ${name}File, not both` }),
+        );
+
+      return fs.readFileString(resolve(directory, file)).pipe(
+        Effect.map((text) => [[name, text] as const]),
+        Effect.mapError(
+          (error) =>
+            new Tool.Error({
+              message: `Could not read ${name}File ${file}: ${error.message}`,
+              error,
+            }),
+        ),
+      );
+    });
+
+    const fileKeys = new Set(names.map((name) => `${name}File`));
+
+    return Object.fromEntries([
+      ...Object.entries(input).filter(([key]) => !fileKeys.has(key)),
+      ...read.flat(),
+    ]);
+  }).pipe(Effect.provide(NodeServices.layer));
+
 /** Define a gh tool, resolving its repository before the permission check so the prompt can name it. */
-const ghTool = <S extends Schema.Codec<any, any>, A, E>(tool: {
+const ghTool = <S extends Schema.Struct<InputFields>, A, E>(tool: {
   readonly name: string;
   readonly description: string;
   readonly access: ToolAccess;
@@ -141,72 +235,82 @@ const ghTool = <S extends Schema.Codec<any, any>, A, E>(tool: {
   /** The permission resource after the tool id; the repository when unset. */
   readonly resource?: (input: S["Type"], repo: string) => string | undefined;
   readonly run: (input: S["Type"], call: GhCall) => Effect.Effect<A, E, Gh>;
-}): ClientTool => ({
-  name: tool.name,
-  description: tool.description,
-  access: tool.access,
-  pinned: tool.pinned ?? false,
-  timeout: tool.timeout ?? "2 minutes",
-  input: tool.input,
-  prepare: (input, directory) =>
-    Schema.decodeUnknownEffect(tool.input)(input, strictInput).pipe(
-      Effect.mapError(
-        (error) =>
-          new Tool.Error({
-            message: `Invalid input for ${tool.name}: ${error.message}`,
-          }),
-      ),
-      Effect.flatMap((decoded: S["Type"]) =>
-        Effect.gen(function* () {
-          const given = Option.getOrUndefined(
-            Option.map(
-              Schema.decodeUnknownOption(WithRepository)(decoded),
-              (input) => input.repo,
+}): ClientTool => {
+  const text = withTextFiles(tool.input);
+
+  return {
+    name: tool.name,
+    description: tool.description,
+    access: tool.access,
+    pinned: tool.pinned ?? false,
+    timeout: tool.timeout ?? "2 minutes",
+    input: text.input,
+    prepare: (raw, directory) =>
+      readTextFiles(raw, text.names, directory).pipe(
+        Effect.flatMap((input) =>
+          Schema.decodeUnknownEffect(tool.input)(input, strictInput).pipe(
+            Effect.mapError(
+              (error) =>
+                new Tool.Error({
+                  message: `Invalid input for ${tool.name}: ${error.message}`,
+                }),
             ),
-          );
-
-          const mode = tool.repo ?? "resolve";
-
-          const repo =
-            mode === "none"
-              ? ""
-              : (given ??
-                (mode === "resolve"
-                  ? yield* currentRepository(directory)
-                  : ""));
-
-          const classified =
-            tool.classify === undefined
-              ? undefined
-              : yield* tool.classify(decoded);
-
-          return {
-            access: classified?.access,
-            resource:
-              classified?.resource ??
-              (tool.resource === undefined
-                ? repo || undefined
-                : tool.resource(decoded, repo)),
-            summary: `${tool.name}${repo ? ` ${repo}` : ""}\n${preview(input)}`,
-            run: tool.run(decoded, { cwd: directory, repo }).pipe(
-              Effect.map((output) =>
-                output === undefined ? { ok: true } : plain(output),
-              ),
-              Effect.provide(ghLayer),
-              Effect.mapError(toGhError),
-              Effect.timeoutOrElse({
-                duration: tool.timeout ?? "2 minutes",
-                orElse: () =>
-                  Effect.fail(
-                    new Tool.Error({ message: `${tool.name} timed out` }),
+            Effect.flatMap((decoded: S["Type"]) =>
+              Effect.gen(function* () {
+                const given = Option.getOrUndefined(
+                  Option.map(
+                    Schema.decodeUnknownOption(WithRepository)(decoded),
+                    (input) => input.repo,
                   ),
-              }),
+                );
+
+                const mode = tool.repo ?? "resolve";
+
+                const repo =
+                  mode === "none"
+                    ? ""
+                    : (given ??
+                      (mode === "resolve"
+                        ? yield* currentRepository(directory)
+                        : ""));
+
+                const classified =
+                  tool.classify === undefined
+                    ? undefined
+                    : yield* tool.classify(decoded);
+
+                return {
+                  access: classified?.access,
+                  resource:
+                    classified?.resource ??
+                    (tool.resource === undefined
+                      ? repo || undefined
+                      : tool.resource(decoded, repo)),
+                  summary: `${tool.name}${repo ? ` ${repo}` : ""}\n${preview(input)}`,
+                  run: tool.run(decoded, { cwd: directory, repo }).pipe(
+                    Effect.map((output) =>
+                      output === undefined ? { ok: true } : plain(output),
+                    ),
+                    Effect.provide(ghLayer),
+                    Effect.mapError(toGhError),
+                    Effect.timeoutOrElse({
+                      duration: tool.timeout ?? "2 minutes",
+                      orElse: () =>
+                        Effect.fail(
+                          new Tool.Error({
+                            message: `${tool.name} timed out`,
+                          }),
+                        ),
+                    }),
+                  ),
+                } satisfies PreparedCall;
+              }).pipe(Effect.provide(ghLayer), Effect.mapError(toGhError)),
             ),
-          } satisfies PreparedCall;
-        }).pipe(Effect.provide(ghLayer), Effect.mapError(toGhError)),
+          ),
+        ),
       ),
-    ),
-});
+  };
+};
 
 const withGh = <A, E>(f: (gh: Gh["Service"]) => Effect.Effect<A, E>) =>
   Effect.flatMap(Effect.service(Gh), f);
