@@ -23,3 +23,11 @@ Effect v4 SDK for the GitHub CLI. The README documents usage and development.
 - Scope subprocess resources and cancellation. Pass arguments without a shell.
 - Keep dependencies explicit and avoid unsafe assertions and `any`.
 - Add modules and tests when real behaviour needs them.
+
+## OpenCode plugin
+
+- `opencode-plugin/` ships the SDK as OpenCode's `gh` Code Mode namespace. It is
+  private, kept out of the npm and JSR packages, and installs on its own with the
+  `effect` version `@opencode/plugin` pins, against the SDK on `main`.
+- When the SDK wraps a new command, consider a tool for it in
+  `opencode-plugin/src/gh.ts`. Keep the namespace and existing tool names stable.
