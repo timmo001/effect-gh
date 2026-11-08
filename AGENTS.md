@@ -28,6 +28,9 @@ Effect v4 SDK for the GitHub CLI. The README documents usage and development.
 
 - `opencode-plugin/` ships the SDK as OpenCode's `gh` Code Mode namespace. It is
   private, kept out of the npm and JSR packages, and installs on its own with the
-  `effect` version `@opencode/plugin` pins, against the SDK on `main`.
+  `effect` version `@opencode/plugin` pins, against a published SDK release.
+  OpenCode installs plugins with its bundled npm, which can't prepare git
+  dependencies, so never depend on the SDK from GitHub. A plugin tool for a new
+  SDK command waits for the release that ships it.
 - When the SDK wraps a new command, consider a tool for it in
   `opencode-plugin/src/gh.ts`. Keep the namespace and existing tool names stable.

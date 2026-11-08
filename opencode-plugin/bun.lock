@@ -8,7 +8,7 @@
         "@effect/platform-node": "4.1.0",
         "@opencode/plugin": "2.2.6",
         "@opencode/schema": "2.2.6",
-        "@timmo001/effect-gh": "github:timmo001/effect-gh#main",
+        "@timmo001/effect-gh": "0.13.2",
         "effect": "4.1.0",
       },
       "devDependencies": {
@@ -197,7 +197,7 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@timmo001/effect-gh": ["@timmo001/effect-gh@github:timmo001/effect-gh#6319ce7", { "dependencies": { "graphql": "17.1.0" }, "peerDependencies": { "effect": "^4.1.0" } }, "timmo001-effect-gh-6319ce7", "sha512-lPbTnYh8cbhTFaoGeLFa2mnrtMkXS5owGwVpXbEhopTimw5rGxTNuHIC5kiAEytUr7kKJcloQFgZ+k9+tANJCg=="],
+    "@timmo001/effect-gh": ["@timmo001/effect-gh@0.13.2", "", { "dependencies": { "graphql": "17.1.0" }, "peerDependencies": { "effect": "^4.1.0" } }, "sha512-XY74QhpC/h1Lwte/qpgycbrzscQR2TUABmUp+jDK7aTFSV8vBC50mPQxsCmbCGhdCOBbtGFWZzEe3JNvOOsOOg=="],
 
     "@tufjs/canonical-json": ["@tufjs/canonical-json@2.0.0", "", {}, "sha512-yVtV8zsdo8qFHe+/3kw81dSLyF7D576A5cCFCi4X7B39tWT7SekaEFUnvnWJHz+9qO7qJTah1JbrDjWKqFtdWA=="],
 

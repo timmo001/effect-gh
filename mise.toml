@@ -16,7 +16,7 @@ run = [
 [tasks."install:plugin"]
 description = "Install the OpenCode plugin's dependencies"
 # On its own, as OpenCode installs it: it needs the effect version OpenCode's
-# plugin package pins, and checks against the SDK on main.
+# plugin package pins, and checks against the published SDK it pins.
 run = "bun install --frozen-lockfile --cwd opencode-plugin"
 
 [tasks.lint]
