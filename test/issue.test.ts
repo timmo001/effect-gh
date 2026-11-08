@@ -4,7 +4,7 @@ import { ChildProcessSpawner } from "effect/process";
 import { GhDecodeError } from "../src/errors.js";
 import { layer } from "../src/gh.js";
 import * as Issue from "../src/issue.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 const summary = {
   number: 42,
@@ -260,4 +260,46 @@ test("issue view rejects a negative numeric selector before spawning", async () 
       expect(fake.commands).toHaveLength(0);
     }),
   );
+});
+
+test("close and reopen pass comments, reasons and duplicates before the issue", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(Issue.close(1, { repo: "owner/repo" }));
+  await gh.run(
+    Issue.close("--web", {
+      repo: "owner/repo",
+      comment: "Done",
+      reason: "duplicate",
+      duplicateOf: 2,
+    }),
+  );
+  await gh.run(Issue.reopen(1, { repo: "owner/repo", comment: "Again" }));
+  expect(gh.args()).toEqual([
+    ["issue", "close", "--repo", "owner/repo", "--", "1"],
+    [
+      "issue",
+      "close",
+      "--repo",
+      "owner/repo",
+      "--comment",
+      "Done",
+      "--reason",
+      "duplicate",
+      "--duplicate-of",
+      "2",
+      "--",
+      "--web",
+    ],
+    [
+      "issue",
+      "reopen",
+      "--repo",
+      "owner/repo",
+      "--comment",
+      "Again",
+      "--",
+      "1",
+    ],
+  ]);
 });

@@ -9,7 +9,7 @@ import {
 } from "../src/errors.js";
 import { layer } from "../src/gh.js";
 import * as PullRequest from "../src/pull-request.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 const summary: PullRequest.Summary = {
   number: 42,
@@ -322,3 +322,43 @@ test.each(["timeout", "interruption"] as const)(
     );
   },
 );
+
+test("close, reopen, ready and comment pass flags before the selector", async () => {
+  const gh = scriptedSpawner([]);
+  const repository = "owner/repo";
+
+  await gh.run(
+    PullRequest.close(42, { repository, comment: "Stale", deleteBranch: true }),
+  );
+  await gh.run(PullRequest.reopen("--web", { repository }));
+  await gh.run(PullRequest.ready(42, { repository, undo: true }));
+  await gh.run(
+    PullRequest.comment(42, {
+      repository,
+      body: "Thanks",
+      attachments: ["shot.png#Screenshot"],
+    }),
+  );
+  expect(gh.args()).toEqual([
+    [
+      "pr",
+      "close",
+      "--repo=owner/repo",
+      "--comment=Stale",
+      "--delete-branch",
+      "--",
+      "42",
+    ],
+    ["pr", "reopen", "--repo=owner/repo", "--", "--web"],
+    ["pr", "ready", "--repo=owner/repo", "--undo", "--", "42"],
+    [
+      "pr",
+      "comment",
+      "--repo=owner/repo",
+      "--body=Thanks",
+      "--attach=shot.png#Screenshot",
+      "--",
+      "42",
+    ],
+  ]);
+});

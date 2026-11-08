@@ -284,11 +284,13 @@ Invalid numeric limits and selectors fail with `IssueInvalidInput` before spawni
 The fields include `issueType`, `parent`, `subIssues`, `subIssuesSummary`,
 `blockedBy` and `blocking`; linked issues carry their number, title, URL, state
 and repository. `Issue.list` and `query` also filter by issue `type` name.
-`Issue.create` returns the new issue's URL; `edit`, `comment` and `close` cover
-the common mutations. `create` sets a `type`, `parent`, `blockedBy` and
+`Issue.create` returns the new issue's URL; `edit`, `comment`, `close` and
+`reopen` cover the common mutations. `close` takes an optional `comment`,
+`reason` (`completed`, `not planned` or `duplicate`) and `duplicateOf`, and
+`reopen` a `comment`. `create` sets a `type`, `parent`, `blockedBy` and
 `blocking`; `edit` sets or removes the type and parent, and adds or removes
 sub-issues and blocked-by or blocking issues, by number or URL. `create`, `edit`
-and `comment` (and `PullRequest.create` and `edit`) upload image and video
+and `comment` (and `PullRequest.create`, `edit` and `comment`) upload image and video
 `attachments` through `--attach`, as `<file>` or `<file>#<alt text>`. When some
 uploads fail, gh still saves the rest and exits non-zero.
 
@@ -372,7 +374,9 @@ exactly those fields, including body, author, merge state, review decision,
 comments, reviews and labels. `get` defaults to the working directory's current
 branch and repository. `create` returns the URL; `edit`, `merge` (now or
 `auto`), `disableAutoMerge` and `diff` cover the rest. `diff` returns the patch
-verbatim, escape sequences included.
+verbatim, escape sequences included. `close` (with a `comment` and
+`deleteBranch`), `reopen` (with a `comment`), `ready` (back to draft with
+`undo`) and `comment` change its state or add a comment.
 
 ## Workflow runs
 

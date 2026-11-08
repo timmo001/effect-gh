@@ -369,16 +369,56 @@ export const comment = Effect.fn("Issue.comment")(function* (
   );
 });
 
-/** Close an issue. */
+/** Input for {@link close}. */
+export interface CloseInput {
+  readonly repo: string;
+  /** Leave a closing comment. */
+  readonly comment?: string;
+  readonly reason?: "completed" | "not planned" | "duplicate";
+  /** Close as a duplicate of this issue, by number or URL. */
+  readonly duplicateOf?: IssueReference;
+}
+
+const commentArgs = (comment: string | undefined) =>
+  comment === undefined ? [] : ["--comment", comment];
+
+/** Close an issue, optionally with a comment, a reason or the issue it duplicates. */
 export const close = Effect.fn("Issue.close")(function* (
   issue: number | string,
-  input: { readonly repo: string },
+  input: CloseInput,
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+  const args = ["issue", "close", "--repo", input.repo];
+
+  args.push(...commentArgs(input.comment));
+
+  if (input.reason !== undefined) args.push("--reason", input.reason);
+
+  if (input.duplicateOf !== undefined)
+    args.push("--duplicate-of", String(input.duplicateOf));
+  args.push("--", String(issue));
+  yield* gh.execute(args, execution);
+});
+
+/** Reopen an issue, optionally with a comment. */
+export const reopen = Effect.fn("Issue.reopen")(function* (
+  issue: number | string,
+  input: { readonly repo: string; readonly comment?: string },
   execution?: GhOptions,
 ) {
   const gh = yield* Gh;
 
   yield* gh.execute(
-    ["issue", "close", "--repo", input.repo, "--", String(issue)],
+    [
+      "issue",
+      "reopen",
+      "--repo",
+      input.repo,
+      ...commentArgs(input.comment),
+      "--",
+      String(issue),
+    ],
     execution,
   );
 });

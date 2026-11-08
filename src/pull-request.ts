@@ -370,6 +370,90 @@ export const merge = Effect.fn("PullRequest.merge")(function* (
   );
 });
 
+/** Input for {@link close}. */
+export interface CloseInput extends Options {
+  /** Leave a closing comment. */
+  readonly comment?: string;
+  /** Delete the head branch on GitHub, and locally when run in its checkout. */
+  readonly deleteBranch?: boolean;
+}
+
+/** Close a pull request without merging it. */
+export const close = Effect.fn("PullRequest.close")(function* (
+  selector: number | string,
+  input: CloseInput,
+) {
+  const gh = yield* Gh;
+  const args = ["pr", "close", `--repo=${input.repository}`];
+
+  if (input.comment !== undefined) args.push(`--comment=${input.comment}`);
+
+  if (input.deleteBranch) args.push("--delete-branch");
+  args.push("--", String(selector));
+  yield* gh.execute(args, input);
+});
+
+/** Reopen a closed pull request, optionally with a comment. */
+export const reopen = Effect.fn("PullRequest.reopen")(function* (
+  selector: number | string,
+  input: Options & { readonly comment?: string },
+) {
+  const gh = yield* Gh;
+  const args = ["pr", "reopen", `--repo=${input.repository}`];
+
+  if (input.comment !== undefined) args.push(`--comment=${input.comment}`);
+  args.push("--", String(selector));
+  yield* gh.execute(args, input);
+});
+
+/** Mark a draft pull request ready for review, or turn it back into a draft with `undo`. */
+export const ready = Effect.fn("PullRequest.ready")(function* (
+  selector: number | string,
+  input: Options & { readonly undo?: boolean },
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "pr",
+      "ready",
+      `--repo=${input.repository}`,
+      ...(input.undo ? ["--undo"] : []),
+      "--",
+      String(selector),
+    ],
+    input,
+  );
+});
+
+/** Input for {@link comment}. */
+export interface CommentInput {
+  readonly repository: string;
+  readonly body: string;
+  /** Image or video files to upload into the body, as `<file>` or `<file>#<alt text>`. */
+  readonly attachments?: ReadonlyArray<string>;
+}
+
+/** Add a comment to a pull request. */
+export const comment = Effect.fn("PullRequest.comment")(function* (
+  selector: number | string,
+  input: CommentInput,
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  const args = [
+    "pr",
+    "comment",
+    `--repo=${input.repository}`,
+    `--body=${input.body}`,
+  ];
+
+  for (const file of input.attachments ?? []) args.push(`--attach=${file}`);
+  args.push("--", String(selector));
+  yield* gh.execute(args, options);
+});
+
 /** Turn off auto-merge for a pull request. */
 export const disableAutoMerge = Effect.fn("PullRequest.disableAutoMerge")(
   function* (selector: number | string, input: Options) {
