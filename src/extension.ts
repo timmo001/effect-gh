@@ -232,3 +232,94 @@ export const checkUpgrades = Effect.fn("Extension.checkUpgrades")(function* (
       }),
     );
 });
+
+export const SearchResult = Schema.Struct({
+  fullName: Schema.String,
+  name: Schema.String,
+  description: Schema.String,
+  url: Schema.String,
+  stargazersCount: Schema.Int,
+  updatedAt: Schema.String,
+});
+
+export interface SearchResult extends Schema.Schema.Type<typeof SearchResult> {}
+
+/** Input for {@link search}. */
+export interface SearchInput {
+  readonly query?: string;
+  readonly owner?: ReadonlyArray<string>;
+  readonly license?: ReadonlyArray<string>;
+  /** Defaults to gh's 30. */
+  readonly limit?: number;
+  readonly sort?: "forks" | "help-wanted-issues" | "stars" | "updated";
+  readonly order?: "asc" | "desc";
+}
+
+/** Search for installable extensions. */
+export const search = Effect.fn("Extension.search")(function* (
+  input: SearchInput = {},
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  return yield* gh.json(
+    [
+      "extension",
+      "search",
+      "--json",
+      Object.keys(SearchResult.fields).join(","),
+      ...(input.owner ?? []).flatMap((owner) => ["--owner", owner]),
+      ...(input.license ?? []).flatMap((license) => ["--license", license]),
+      ...(input.limit === undefined ? [] : ["--limit", String(input.limit)]),
+      ...(input.sort === undefined ? [] : ["--sort", input.sort]),
+      ...(input.order === undefined ? [] : ["--order", input.order]),
+      ...(input.query === undefined ? [] : ["--", input.query]),
+    ],
+    Schema.Array(SearchResult),
+    options,
+  );
+});
+
+/**
+ * Run an installed extension by name, such as `dash`, with arguments gh
+ * forwards untouched, and return its stdout.
+ */
+export const exec = Effect.fn("Extension.exec")(function* (
+  name: string,
+  args: ReadonlyArray<string> = [],
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  return (yield* gh.execute(["extension", "exec", name, ...args], options))
+    .stdout;
+});
+
+/** Input for {@link create}. */
+export interface CreateInput {
+  /** Extension name, such as `gh-foo`; created as a directory in `options.cwd`. */
+  readonly name: string;
+  /** Scaffold a precompiled extension instead of a script one. */
+  readonly precompiled?: "go" | "other";
+}
+
+/** Scaffold a new extension in a directory named after it. */
+export const create = Effect.fn("Extension.create")(function* (
+  input: CreateInput,
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "extension",
+      "create",
+      ...(input.precompiled === undefined
+        ? []
+        : [`--precompiled=${input.precompiled}`]),
+      "--",
+      input.name,
+    ],
+    options,
+  );
+});

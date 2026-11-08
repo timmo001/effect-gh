@@ -308,3 +308,51 @@ export const download = Effect.fn("Release.download")(function* (
     options,
   );
 });
+
+/**
+ * Verify a release's attestation, or the latest release's when `tag` is
+ * omitted. gh exits non-zero when verification fails.
+ */
+export const verify = Effect.fn("Release.verify")(function* (
+  input: { readonly repo?: string; readonly tag?: string } = {},
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "release",
+      "verify",
+      ...repoArgs(input.repo),
+      ...(input.tag === undefined ? [] : ["--", input.tag]),
+    ],
+    options,
+  );
+});
+
+/**
+ * Verify that a local file matches an asset of a release attestation. gh exits
+ * non-zero when verification fails.
+ */
+export const verifyAsset = Effect.fn("Release.verifyAsset")(function* (
+  input: {
+    readonly repo?: string;
+    readonly tag?: string;
+    readonly file: string;
+  },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "release",
+      "verify-asset",
+      ...repoArgs(input.repo),
+      "--",
+      ...(input.tag === undefined ? [] : [input.tag]),
+      input.file,
+    ],
+    options,
+  );
+});

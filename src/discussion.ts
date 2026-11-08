@@ -1,6 +1,6 @@
 import { Effect, Schema } from "effect";
 import * as Graphql from "./graphql.js";
-import type { GhOptions } from "./gh.js";
+import { Gh, type GhOptions } from "./gh.js";
 import {
   Author,
   collectPages,
@@ -290,4 +290,79 @@ export const reply = Effect.fn("Discussion.reply")(function* (
     addCommentResponse,
     host,
   )).addDiscussionComment.comment;
+});
+
+/** Input for {@link create}. */
+export interface CreateInput {
+  readonly repo?: string;
+  readonly title: string;
+  readonly body: string;
+  /** Category name or slug. */
+  readonly category: string;
+  readonly labels?: ReadonlyArray<string>;
+}
+
+/** Create a discussion with `gh discussion create` (preview) and return its URL. */
+export const create = Effect.fn("Discussion.create")(function* (
+  input: CreateInput,
+  options?: Omit<GhOptions, "stdin">,
+) {
+  const gh = yield* Gh;
+
+  const output = yield* gh.execute(
+    [
+      "discussion",
+      "create",
+      ...(input.repo === undefined ? [] : ["--repo", input.repo]),
+      "--title",
+      input.title,
+      "--body",
+      input.body,
+      "--category",
+      input.category,
+      ...(input.labels ?? []).flatMap((label) => ["--label", label]),
+    ],
+    options,
+  );
+
+  return { url: output.stdout.trim().split("\n").at(-1) ?? "" };
+});
+
+/** Input for {@link edit}; set at least one of the changes. */
+export interface EditInput {
+  readonly repo?: string;
+  /** Discussion number or URL. */
+  readonly discussion: string | number;
+  readonly title?: string;
+  readonly body?: string;
+  readonly category?: string;
+  readonly addLabels?: ReadonlyArray<string>;
+  readonly removeLabels?: ReadonlyArray<string>;
+}
+
+/** Edit a discussion with `gh discussion edit` (preview). */
+export const edit = Effect.fn("Discussion.edit")(function* (
+  input: EditInput,
+  options?: Omit<GhOptions, "stdin">,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "discussion",
+      "edit",
+      ...(input.repo === undefined ? [] : ["--repo", input.repo]),
+      ...(input.title === undefined ? [] : ["--title", input.title]),
+      ...(input.body === undefined ? [] : ["--body", input.body]),
+      ...(input.category === undefined ? [] : ["--category", input.category]),
+      ...(input.addLabels ?? []).flatMap((label) => ["--add-label", label]),
+      ...(input.removeLabels ?? []).flatMap((label) => [
+        "--remove-label",
+        label,
+      ]),
+      "--",
+      String(input.discussion),
+    ],
+    options,
+  );
 });
