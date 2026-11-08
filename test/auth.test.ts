@@ -3,7 +3,7 @@ import { Effect, Layer, Option } from "effect";
 import { ChildProcessSpawner } from "effect/process";
 import * as Auth from "../src/auth.js";
 import { layer } from "../src/gh.js";
-import { fakeSpawner, textStream } from "./helpers.js";
+import { fakeSpawner, scriptedSpawner, textStream } from "./helpers.js";
 
 test("hasToken drains the token without returning it", async () => {
   await Effect.runPromise(
@@ -21,6 +21,45 @@ test("hasToken drains the token without returning it", async () => {
       expect(fake.commands[0]).toMatchObject({ args: ["auth", "token"] });
     }),
   );
+});
+
+test("login sends the token on stdin, never as an argument", async () => {
+  const gh = scriptedSpawner([{ stdout: "" }]);
+
+  await gh.run(
+    Auth.login({
+      token: "ghp_secret",
+      hostname: "github.example",
+      gitProtocol: "https",
+      skipSshKey: true,
+    }),
+  );
+  expect(gh.args()).toEqual([
+    [
+      "auth",
+      "login",
+      "--with-token",
+      "--hostname",
+      "github.example",
+      "--git-protocol",
+      "https",
+      "--skip-ssh-key",
+    ],
+  ]);
+  expect(gh.stdins).toEqual(["ghp_secret"]);
+});
+
+test("logout, setupGit and switchAccount pass host and user as flags", async () => {
+  const gh = scriptedSpawner([]);
+
+  await gh.run(Auth.logout({ hostname: "github.com", user: "octocat" }));
+  await gh.run(Auth.setupGit({ hostname: "github.example", force: true }));
+  await gh.run(Auth.switchAccount({ user: "octocat" }));
+  expect(gh.args()).toEqual([
+    ["auth", "logout", "--hostname", "github.com", "--user", "octocat"],
+    ["auth", "setup-git", "--hostname", "github.example", "--force"],
+    ["auth", "switch", "--user", "octocat"],
+  ]);
 });
 
 test("status and hasToken report a logged-out gh as false", async () => {
