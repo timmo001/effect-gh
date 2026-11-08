@@ -362,3 +362,108 @@ test("close, reopen, ready and comment pass flags before the selector", async ()
     ],
   ]);
 });
+
+test("checkout, lock, unlock, review and updateBranch pass exact argv", async () => {
+  const gh = scriptedSpawner([]);
+  const repository = "owner/repo";
+
+  await gh.run(
+    PullRequest.checkout(
+      42,
+      { repository, branch: "local", detach: true, recurseSubmodules: true },
+      { cwd: "/work/repo" },
+    ),
+  );
+  await gh.run(PullRequest.checkout("feature", { force: true }));
+  await gh.run(PullRequest.lock(42, { repository, reason: "resolved" }));
+  await gh.run(PullRequest.unlock(42, { repository }));
+  await gh.run(
+    PullRequest.review(42, {
+      repository,
+      event: "request-changes",
+      body: "No",
+    }),
+  );
+  await gh.run(PullRequest.review(42, { repository, event: "approve" }));
+  await gh.run(PullRequest.updateBranch(42, { repository, method: "rebase" }));
+  await gh.run(PullRequest.updateBranch(42, { repository }));
+  expect(gh.args()).toEqual([
+    [
+      "pr",
+      "checkout",
+      "--repo=owner/repo",
+      "--branch=local",
+      "--detach",
+      "--recurse-submodules",
+      "--",
+      "42",
+    ],
+    ["pr", "checkout", "--force", "--", "feature"],
+    ["pr", "lock", "--repo=owner/repo", "--reason=resolved", "--", "42"],
+    ["pr", "unlock", "--repo=owner/repo", "--", "42"],
+    [
+      "pr",
+      "review",
+      "--repo=owner/repo",
+      "--request-changes",
+      "--body=No",
+      "--",
+      "42",
+    ],
+    ["pr", "review", "--repo=owner/repo", "--approve", "--", "42"],
+    ["pr", "update-branch", "--repo=owner/repo", "--rebase", "--", "42"],
+    ["pr", "update-branch", "--repo=owner/repo", "--", "42"],
+  ]);
+});
+
+test("revert returns the new pull request's URL", async () => {
+  const gh = scriptedSpawner([
+    { stdout: "https://github.com/owner/repo/pull/43\n" },
+  ]);
+
+  expect(
+    await gh.run(
+      PullRequest.revert(42, {
+        repository: "owner/repo",
+        title: "Revert",
+        draft: true,
+      }),
+    ),
+  ).toEqual({ url: "https://github.com/owner/repo/pull/43" });
+  expect(gh.args()).toEqual([
+    [
+      "pr",
+      "revert",
+      "--repo=owner/repo",
+      "--title=Revert",
+      "--draft",
+      "--",
+      "42",
+    ],
+  ]);
+});
+
+test("status decodes the current branch and both lists", async () => {
+  const gh = scriptedSpawner([
+    {
+      stdout: JSON.stringify({
+        currentBranch: null,
+        createdBy: [summary],
+        needsReview: [],
+      }),
+    },
+  ]);
+
+  expect(await gh.run(PullRequest.status())).toEqual({
+    currentBranch: null,
+    createdBy: [summary],
+    needsReview: [],
+  });
+  expect(gh.args()).toEqual([
+    [
+      "pr",
+      "status",
+      "--json=number,title,url,state,isDraft,headRefName,headRefOid",
+    ],
+  ]);
+});

@@ -422,3 +422,225 @@ export const reopen = Effect.fn("Issue.reopen")(function* (
     execution,
   );
 });
+
+/** Delete an issue without prompting. This cannot be undone. */
+export const remove = Effect.fn("Issue.remove")(function* (
+  issue: number | string,
+  input: { readonly repo: string },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["issue", "delete", "--repo", input.repo, "--yes", "--", String(issue)],
+    execution,
+  );
+});
+
+/** Why a conversation is locked. */
+export type LockReason = "off_topic" | "resolved" | "spam" | "too_heated";
+
+/** Lock an issue's conversation, optionally with a reason. */
+export const lock = Effect.fn("Issue.lock")(function* (
+  issue: number | string,
+  input: { readonly repo: string; readonly reason?: LockReason },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "issue",
+      "lock",
+      "--repo",
+      input.repo,
+      ...(input.reason === undefined ? [] : ["--reason", input.reason]),
+      "--",
+      String(issue),
+    ],
+    execution,
+  );
+});
+
+/** Unlock an issue's conversation. */
+export const unlock = Effect.fn("Issue.unlock")(function* (
+  issue: number | string,
+  input: { readonly repo: string },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["issue", "unlock", "--repo", input.repo, "--", String(issue)],
+    execution,
+  );
+});
+
+/** Pin an issue to its repository. */
+export const pin = Effect.fn("Issue.pin")(function* (
+  issue: number | string,
+  input: { readonly repo: string },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["issue", "pin", "--repo", input.repo, "--", String(issue)],
+    execution,
+  );
+});
+
+/** Unpin an issue from its repository. */
+export const unpin = Effect.fn("Issue.unpin")(function* (
+  issue: number | string,
+  input: { readonly repo: string },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["issue", "unpin", "--repo", input.repo, "--", String(issue)],
+    execution,
+  );
+});
+
+/** Transfer an issue to another repository, and return the new issue's URL. */
+export const transfer = Effect.fn("Issue.transfer")(function* (
+  issue: number | string,
+  input: {
+    readonly repo: string;
+    /** `[HOST/]OWNER/REPO` or its URL. */
+    readonly destination: string;
+  },
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  const output = yield* gh.execute(
+    [
+      "issue",
+      "transfer",
+      "--repo",
+      input.repo,
+      "--",
+      String(issue),
+      input.destination,
+    ],
+    execution,
+  );
+
+  return { url: output.stdout.trim().split("\n").at(-1) ?? "" };
+});
+
+/** A branch linked to an issue. */
+export interface LinkedBranch {
+  readonly name: string;
+  readonly url: string;
+}
+
+/** List the branches linked to an issue. Empty when there are none. */
+export const linkedBranches = Effect.fn("Issue.linkedBranches")(function* (
+  issue: number | string,
+  options: ViewOptions = {},
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  const output = yield* gh.execute(
+    [
+      "issue",
+      "develop",
+      "--list",
+      ...repoArgs(options.repo),
+      "--",
+      String(issue),
+    ],
+    execution,
+  );
+
+  return output.stdout
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .map((line): LinkedBranch => {
+      const [name = "", url = ""] = line.split("\t");
+
+      return { name, url };
+    });
+});
+
+/** Input for {@link develop}. */
+export interface DevelopInput {
+  readonly repo?: string;
+  /** Remote branch to create the new branch from. */
+  readonly base?: string;
+  /** Name of the new branch. */
+  readonly name?: string;
+  /** Repository to create the branch in, when not the issue's. */
+  readonly branchRepo?: string;
+  /** Check the branch out in the working directory after creating it. */
+  readonly checkout?: boolean;
+  /** Check the branch out into a worktree at this path; needs `checkout`. */
+  readonly worktree?: string;
+}
+
+/** Create a branch linked to an issue, and return its URL. */
+export const develop = Effect.fn("Issue.develop")(function* (
+  issue: number | string,
+  input: DevelopInput = {},
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+  const args = ["issue", "develop", ...repoArgs(input.repo)];
+
+  if (input.base !== undefined) args.push("--base", input.base);
+
+  if (input.name !== undefined) args.push("--name", input.name);
+
+  if (input.branchRepo !== undefined)
+    args.push("--branch-repo", input.branchRepo);
+
+  if (input.checkout) args.push("--checkout");
+
+  if (input.worktree !== undefined) args.push("--worktree", input.worktree);
+  args.push("--", String(issue));
+  const output = yield* gh.execute(args, execution);
+
+  return { url: output.stdout.trim().split("\n")[0] ?? "" };
+});
+
+/** An issue in {@link status}. */
+export const StatusIssue = Schema.Struct({
+  ...IssueSummary.fields,
+  labels: Schema.Array(Schema.Struct({ name: Schema.String })),
+});
+
+export interface StatusIssue extends Schema.Schema.Type<typeof StatusIssue> {}
+
+/** The issues relevant to the current user in a repository. */
+export const Status = Schema.Struct({
+  createdBy: Schema.Array(StatusIssue),
+  assigned: Schema.Array(StatusIssue),
+  mentioned: Schema.Array(StatusIssue),
+});
+
+export interface Status extends Schema.Schema.Type<typeof Status> {}
+
+/** Open issues the current user created, is assigned or is mentioned in. */
+export const status = Effect.fn("Issue.status")(function* (
+  options: ViewOptions = {},
+  execution?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  return yield* gh.json(
+    [
+      "issue",
+      "status",
+      "--json",
+      Object.keys(StatusIssue.fields).join(","),
+      ...repoArgs(options.repo),
+    ],
+    Status,
+    execution,
+  );
+});

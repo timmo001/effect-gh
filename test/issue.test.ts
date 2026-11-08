@@ -303,3 +303,116 @@ test("close and reopen pass comments, reasons and duplicates before the issue", 
     ],
   ]);
 });
+
+test("remove, lock, unlock, pin, unpin and transfer pass exact argv", async () => {
+  const gh = scriptedSpawner([
+    { stdout: "" },
+    { stdout: "" },
+    { stdout: "" },
+    { stdout: "" },
+    { stdout: "" },
+    { stdout: "https://github.com/owner/other/issues/3\n" },
+  ]);
+
+  const input = { repo: "owner/repo" };
+
+  await gh.run(Issue.remove(1, input));
+  await gh.run(Issue.lock(2, { ...input, reason: "too_heated" }));
+  await gh.run(Issue.unlock(2, input));
+  await gh.run(Issue.pin("--web", input));
+  await gh.run(Issue.unpin(4, input));
+
+  expect(
+    await gh.run(Issue.transfer(5, { ...input, destination: "owner/other" })),
+  ).toEqual({ url: "https://github.com/owner/other/issues/3" });
+  expect(gh.args()).toEqual([
+    ["issue", "delete", "--repo", "owner/repo", "--yes", "--", "1"],
+    [
+      "issue",
+      "lock",
+      "--repo",
+      "owner/repo",
+      "--reason",
+      "too_heated",
+      "--",
+      "2",
+    ],
+    ["issue", "unlock", "--repo", "owner/repo", "--", "2"],
+    ["issue", "pin", "--repo", "owner/repo", "--", "--web"],
+    ["issue", "unpin", "--repo", "owner/repo", "--", "4"],
+    ["issue", "transfer", "--repo", "owner/repo", "--", "5", "owner/other"],
+  ]);
+});
+
+test("develop lists linked branches and creates one", async () => {
+  const gh = scriptedSpawner([
+    {
+      stdout:
+        "fix-1\thttps://github.com/owner/repo/tree/fix-1\nfix-2\thttps://github.com/owner/repo/tree/fix-2\n",
+    },
+    { stdout: "github.com/owner/repo/tree/42-new\n" },
+  ]);
+
+  expect(
+    await gh.run(Issue.linkedBranches(42, { repo: "owner/repo" })),
+  ).toEqual([
+    { name: "fix-1", url: "https://github.com/owner/repo/tree/fix-1" },
+    { name: "fix-2", url: "https://github.com/owner/repo/tree/fix-2" },
+  ]);
+  expect(
+    await gh.run(
+      Issue.develop(42, {
+        repo: "owner/repo",
+        base: "main",
+        name: "42-new",
+        checkout: true,
+      }),
+    ),
+  ).toEqual({ url: "github.com/owner/repo/tree/42-new" });
+  expect(gh.args()).toEqual([
+    ["issue", "develop", "--list", "--repo", "owner/repo", "--", "42"],
+    [
+      "issue",
+      "develop",
+      "--repo",
+      "owner/repo",
+      "--base",
+      "main",
+      "--name",
+      "42-new",
+      "--checkout",
+      "--",
+      "42",
+    ],
+  ]);
+});
+
+test("status selects its fields and decodes the three groups", async () => {
+  const item = { ...summary, labels: [{ name: "bug" }] };
+
+  const gh = scriptedSpawner([
+    {
+      stdout: JSON.stringify({
+        createdBy: [item],
+        assigned: [],
+        mentioned: [item],
+      }),
+    },
+  ]);
+
+  expect(await gh.run(Issue.status({ repo: "owner/repo" }))).toEqual({
+    createdBy: [item],
+    assigned: [],
+    mentioned: [item],
+  });
+  expect(gh.args()).toEqual([
+    [
+      "issue",
+      "status",
+      "--json",
+      "number,title,url,state,updatedAt,labels",
+      "--repo",
+      "owner/repo",
+    ],
+  ]);
+});

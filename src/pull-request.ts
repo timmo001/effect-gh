@@ -494,3 +494,185 @@ export const diff = Effect.fn("PullRequest.diff")(function* (
     options,
   )).stdout;
 });
+
+/** Input for {@link checkout}. */
+export interface CheckoutInput {
+  /** [HOST/]OWNER/REPO. Defaults to the working directory's repository. */
+  readonly repository?: string;
+  /** Local branch name to use, instead of the head branch's name. */
+  readonly branch?: string;
+  /** Check out with a detached HEAD. */
+  readonly detach?: boolean;
+  /** Reset the existing local branch to the pull request's latest state. */
+  readonly force?: boolean;
+  readonly recurseSubmodules?: boolean;
+  /** Check out into a worktree at this path. */
+  readonly worktree?: string;
+}
+
+/** Check a pull request out in git. Set `cwd` in the options to choose the checkout. */
+export const checkout = Effect.fn("PullRequest.checkout")(function* (
+  selector: number | string,
+  input: CheckoutInput = {},
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+  const args = ["pr", "checkout", ...repoArgs(input.repository)];
+
+  if (input.branch !== undefined) args.push(`--branch=${input.branch}`);
+
+  if (input.detach) args.push("--detach");
+
+  if (input.force) args.push("--force");
+
+  if (input.recurseSubmodules) args.push("--recurse-submodules");
+
+  if (input.worktree !== undefined) args.push(`--worktree=${input.worktree}`);
+  args.push("--", String(selector));
+  yield* gh.execute(args, options);
+});
+
+/** Why a conversation is locked. */
+export type LockReason = "off_topic" | "resolved" | "spam" | "too_heated";
+
+/** Lock a pull request's conversation, optionally with a reason. */
+export const lock = Effect.fn("PullRequest.lock")(function* (
+  selector: number | string,
+  input: { readonly repository: string; readonly reason?: LockReason },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "pr",
+      "lock",
+      `--repo=${input.repository}`,
+      ...(input.reason === undefined ? [] : [`--reason=${input.reason}`]),
+      "--",
+      String(selector),
+    ],
+    options,
+  );
+});
+
+/** Unlock a pull request's conversation. */
+export const unlock = Effect.fn("PullRequest.unlock")(function* (
+  selector: number | string,
+  input: { readonly repository: string },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    ["pr", "unlock", `--repo=${input.repository}`, "--", String(selector)],
+    options,
+  );
+});
+
+/** Input for {@link revert}. */
+export interface RevertInput {
+  readonly repository: string;
+  readonly title?: string;
+  readonly body?: string;
+  readonly draft?: boolean;
+}
+
+/** Open a pull request that reverts a merged one, and return its URL. */
+export const revert = Effect.fn("PullRequest.revert")(function* (
+  selector: number | string,
+  input: RevertInput,
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+  const args = ["pr", "revert", `--repo=${input.repository}`];
+
+  if (input.title !== undefined) args.push(`--title=${input.title}`);
+
+  if (input.body !== undefined) args.push(`--body=${input.body}`);
+
+  if (input.draft) args.push("--draft");
+  args.push("--", String(selector));
+  const output = yield* gh.execute(args, options);
+
+  return { url: output.stdout.trim().split("\n").at(-1) ?? "" };
+});
+
+/** Input for {@link review}. */
+export interface ReviewInput {
+  readonly repository: string;
+  readonly event: "approve" | "request-changes" | "comment";
+  /** gh requires a body for `request-changes` and `comment`. */
+  readonly body?: string;
+}
+
+/** Add an approving, change-requesting or commenting review to a pull request. */
+export const review = Effect.fn("PullRequest.review")(function* (
+  selector: number | string,
+  input: ReviewInput,
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "pr",
+      "review",
+      `--repo=${input.repository}`,
+      `--${input.event}`,
+      ...(input.body === undefined ? [] : [`--body=${input.body}`]),
+      "--",
+      String(selector),
+    ],
+    options,
+  );
+});
+
+/** The pull requests relevant to the current user in a repository. */
+export const StatusResult = Schema.Struct({
+  /** The current branch's pull request: null when it has none, absent with an explicit repository. */
+  currentBranch: Schema.optionalKey(Schema.NullOr(Summary)),
+  createdBy: Schema.Array(Summary),
+  needsReview: Schema.Array(Summary),
+});
+
+export interface StatusResult extends Schema.Schema.Type<typeof StatusResult> {}
+
+/** Pull requests the current user created or is asked to review, and the current branch's. */
+export const status = Effect.fn("PullRequest.status")(function* (
+  input: { readonly repository?: string } = {},
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  return yield* gh.json(
+    ["pr", "status", ...repoArgs(input.repository), `--json=${fields}`],
+    StatusResult,
+    options,
+  );
+});
+
+/** Update a pull request's branch from its base branch, by merge or rebase. */
+export const updateBranch = Effect.fn("PullRequest.updateBranch")(function* (
+  selector: number | string,
+  input: {
+    readonly repository: string;
+    /** Defaults to a merge commit. */
+    readonly method?: "merge" | "rebase";
+  },
+  options?: GhOptions,
+) {
+  const gh = yield* Gh;
+
+  yield* gh.execute(
+    [
+      "pr",
+      "update-branch",
+      `--repo=${input.repository}`,
+      ...(input.method === "rebase" ? ["--rebase"] : []),
+      "--",
+      String(selector),
+    ],
+    options,
+  );
+});
