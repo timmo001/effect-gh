@@ -5,8 +5,19 @@ node = "26.13.0"
 bun = "1.4.4"
 
 [tasks.install]
-description = "Install dependencies"
-run = "bun install --frozen-lockfile"
+description = "Install dependencies and patch TypeScript with the Effect language service"
+# Not prepare or prepack scripts: a git dependency with either makes npm install
+# every devDependency in its clone, which the OpenCode plugin's install hits.
+run = [
+  "bun install --frozen-lockfile",
+  "bun x effect-tsgo patch --force=false",
+]
+
+[tasks."install:plugin"]
+description = "Install the OpenCode plugin's dependencies"
+# On its own, as OpenCode installs it: it needs the effect version OpenCode's
+# plugin package pins, and checks against the SDK on main.
+run = "bun install --frozen-lockfile --cwd opencode-plugin"
 
 [tasks.lint]
 description = "Lint source with the shared Oxlint rules"
@@ -17,6 +28,11 @@ run = "bun run lint"
 description = "Type-check source"
 depends = ["install"]
 run = "bun run typecheck"
+
+[tasks."typecheck:plugin"]
+description = "Type-check the OpenCode plugin"
+depends = ["install", "install:plugin"]
+run = "bun x tsc -p opencode-plugin"
 
 [tasks.format]
 description = "Format source and configuration"
@@ -30,7 +46,7 @@ run = "bun run format:check"
 
 [tasks.check]
 description = "Lint, type-check, test and verify formatting"
-depends = ["lint", "typecheck", "test", "format:check"]
+depends = ["lint", "typecheck", "typecheck:plugin", "test", "format:check"]
 
 [tasks.test]
 description = "Run SDK contract tests"

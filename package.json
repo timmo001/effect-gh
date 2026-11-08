@@ -37,12 +37,10 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "test": "bun test",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "prepare": "effect-tsgo patch --force=false",
-    "prepack": "bun run build"
+    "format:check": "prettier --check ."
   },
   "peerDependencies": {
-    "effect": "^4.1.2"
+    "effect": "^4.1.0"
   },
   "devDependencies": {
     "@effect/platform-node": "4.1.2",
