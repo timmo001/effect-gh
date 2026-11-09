@@ -1384,6 +1384,34 @@ export const tools: readonly ClientTool[] = [
       ),
   }),
   ghTool({
+    name: "search_commits",
+    description:
+      "Search commits across GitHub by message with GitHub search syntax, optionally in one owner or repository, by author or by hash.",
+    access: "read",
+    repo: "none",
+    input: Schema.Struct({
+      query: Schema.optionalKey(Schema.String),
+      owner: Schema.optionalKey(Schema.String),
+      repo: Schema.optionalKey(Schema.String).annotate({
+        description: "Only this OWNER/REPO",
+      }),
+      author: Schema.optionalKey(Schema.String).annotate({
+        description: "The author's login",
+      }),
+      hash: Schema.optionalKey(Schema.String),
+      limit: Schema.optionalKey(Schema.Int),
+    }),
+    run: (input, call) =>
+      Search.commits(
+        {
+          ...input,
+          owner: input.owner === undefined ? [] : [input.owner],
+          limit: input.limit ?? 30,
+        },
+        { cwd: call.cwd },
+      ),
+  }),
+  ghTool({
     name: "run_list",
     description: "List recent Actions runs, 20 by default, newest first.",
     access: "read",
