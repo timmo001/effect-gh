@@ -176,11 +176,25 @@ test("remove, archive, unarchive and rename skip the prompt", async () => {
   const gh = scriptedSpawner([]);
 
   await gh.run(Repository.remove({ repo: "owner/repo" }));
+  await gh.run(
+    Repository.remove({
+      repo: "owner/repo",
+      acceptCascadingDeletionOfPrivateForks: true,
+    }),
+  );
   await gh.run(Repository.archive({ repo: "owner/repo" }));
   await gh.run(Repository.unarchive());
   await gh.run(Repository.rename({ repo: "owner/repo", newName: "other" }));
   expect(gh.args()).toEqual([
     ["repo", "delete", "--yes", "--", "owner/repo"],
+    [
+      "repo",
+      "delete",
+      "--yes",
+      "--accept-cascading-deletion-of-private-forks",
+      "--",
+      "owner/repo",
+    ],
     ["repo", "archive", "--yes", "--", "owner/repo"],
     ["repo", "unarchive", "--yes"],
     ["repo", "rename", "--yes", "--repo", "owner/repo", "--", "other"],

@@ -250,15 +250,32 @@ export const create = Effect.fn("Repository.create")(function* (
 /**
  * Delete a repository without prompting. gh ignores `--yes` without an
  * explicit repository, so `repo` is required, and the token needs the
- * `delete_repo` scope.
+ * `delete_repo` scope. From gh 2.104.0, deleting a private or internal
+ * repository that has forks fails unless
+ * `acceptCascadingDeletionOfPrivateForks` is set, since it deletes them too.
  */
 export const remove = Effect.fn("Repository.remove")(function* (
-  input: { readonly repo: string },
+  input: {
+    readonly repo: string;
+    readonly acceptCascadingDeletionOfPrivateForks?: boolean;
+  },
   options?: GhOptions,
 ) {
   const gh = yield* Gh;
 
-  yield* gh.execute(["repo", "delete", "--yes", "--", input.repo], options);
+  yield* gh.execute(
+    [
+      "repo",
+      "delete",
+      "--yes",
+      ...(input.acceptCascadingDeletionOfPrivateForks
+        ? ["--accept-cascading-deletion-of-private-forks"]
+        : []),
+      "--",
+      input.repo,
+    ],
+    options,
+  );
 });
 
 /** Input for {@link edit}. */
