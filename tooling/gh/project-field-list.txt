@@ -14,7 +14,7 @@ FLAGS
   -t, --template string   Format JSON output using a Go template; see "gh help formatting"
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # List fields in the current user's project "1"

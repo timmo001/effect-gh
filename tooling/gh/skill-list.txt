@@ -25,7 +25,7 @@ FLAGS
   -t, --template string   Format JSON output using a Go template; see "gh help formatting"
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 JSON FIELDS
   agentHosts, path, pinned, scope, skillName, sourceURL, version

@@ -18,7 +18,7 @@ FLAGS
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 ARGUMENTS
   A discussion can be supplied as argument in any of the following formats:

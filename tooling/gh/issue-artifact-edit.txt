@@ -22,7 +22,7 @@ FLAGS
       --restore-version number   Restore the version with this number from the edit history
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

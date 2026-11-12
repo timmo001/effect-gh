@@ -5,11 +5,11 @@ USAGE
   gh release delete <tag> [flags]
 
 FLAGS
-      --cleanup-tag   Delete the specified tag in addition to its release
-  -y, --yes           Skip the confirmation prompt
+      --cleanup-tag[=true|false]   Delete the specified tag in addition to its release
+  -y, --yes[=true|false]           Skip the confirmation prompt
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 LEARN MORE

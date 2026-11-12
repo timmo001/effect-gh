@@ -10,10 +10,10 @@ USAGE
   gh gist delete {<id> | <url>} [flags]
 
 FLAGS
-  --yes   Confirm deletion without prompting
+  --yes[=true|false]   Confirm deletion without prompting
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Delete a gist interactively

@@ -41,7 +41,7 @@ FLAGS
   -R, --repo string             Repository name in the format <owner>/<repo>
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Download attestations for a local artifact linked with an organization

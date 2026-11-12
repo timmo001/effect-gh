@@ -33,12 +33,12 @@ USAGE
   gh skill publish [<directory>] [flags]
 
 FLAGS
-  --dry-run      Validate without publishing
-  --fix          Auto-fix issues where possible without publishing (e.g. strip install metadata)
-  --tag string   Version tag for the release (e.g. v1.0.0)
+  --dry-run[=true|false]   Validate without publishing
+  --fix[=true|false]       Auto-fix issues where possible without publishing (e.g. strip install metadata)
+  --tag string             Version tag for the release (e.g. v1.0.0)
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Validate and publish interactively

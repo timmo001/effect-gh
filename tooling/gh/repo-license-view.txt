@@ -8,10 +8,10 @@ USAGE
   gh repo license view {<license-key> | <spdx-id>} [flags]
 
 FLAGS
-  -w, --web   Open https://choosealicense.com/ in the browser
+  -w, --web[=true|false]   Open https://choosealicense.com/ in the browser
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # View the MIT license from SPDX ID

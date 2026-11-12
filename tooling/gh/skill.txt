@@ -20,7 +20,7 @@ AVAILABLE COMMANDS
   update:        Update installed skills to their latest versions (preview)
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Search for skills

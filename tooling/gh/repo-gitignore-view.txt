@@ -10,7 +10,7 @@ USAGE
   gh repo gitignore view <template> [flags]
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # View the Go gitignore template

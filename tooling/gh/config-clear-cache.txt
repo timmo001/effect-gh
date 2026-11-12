@@ -5,7 +5,7 @@ USAGE
   gh config clear-cache [flags]
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Clear the cli cache

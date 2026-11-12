@@ -8,7 +8,7 @@ FLAGS
   --precompiled string   Create a precompiled extension. Possible values: go, other
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Use interactively

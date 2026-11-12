@@ -12,10 +12,10 @@ USAGE
   gh release upload <tag> <files>... [flags]
 
 FLAGS
-  --clobber   Delete and re-upload existing assets of the same name
+  --clobber[=true|false]   Delete and re-upload existing assets of the same name
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 LEARN MORE

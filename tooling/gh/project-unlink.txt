@@ -10,7 +10,7 @@ FLAGS
   -T, --team string    The team to be unlinked from this project
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Unlink monalisa's project 1 from her repository "my_repo"

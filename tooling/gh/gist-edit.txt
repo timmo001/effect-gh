@@ -11,7 +11,7 @@ FLAGS
   -r, --remove string     Remove a file from the gist
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Select a gist to edit interactively

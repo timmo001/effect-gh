@@ -57,8 +57,8 @@ HELP TOPICS
   telemetry:     Information about telemetry in gh
 
 FLAGS
-  --help      Show help for command
-  --version   Show gh version
+  --help[=true|false]      Show help for command
+  --version[=true|false]   Show gh version
 
 EXAMPLES
   $ gh issue create

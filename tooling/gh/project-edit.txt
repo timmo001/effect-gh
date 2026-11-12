@@ -17,7 +17,7 @@ FLAGS
       --visibility string    Change project visibility: {PUBLIC|PRIVATE}
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Edit the title of monalisa's project "1"

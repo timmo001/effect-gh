@@ -14,11 +14,11 @@ USAGE
   gh auth setup-git [flags]
 
 FLAGS
-  -f, --force --hostname   Force setup even if the host is not known. Must be used in conjunction with --hostname
-  -h, --hostname string    The hostname to configure git for
+  -f, --force[=true|false]   Force setup even if the host is not known. Must be used in conjunction with --hostname
+  -h, --hostname string      The hostname to configure git for
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Configure git to use GitHub CLI as the credential helper for all authenticated hosts

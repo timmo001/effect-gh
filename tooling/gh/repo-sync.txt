@@ -15,12 +15,12 @@ USAGE
   gh repo sync [<destination-repository>] [flags]
 
 FLAGS
-  -b, --branch string   Branch to sync (default [default branch])
-      --force           Hard reset the branch of the destination repository to match the source repository
-  -s, --source string   Source repository
+  -b, --branch string        Branch to sync (default [default branch])
+      --force[=true|false]   Hard reset the branch of the destination repository to match the source repository
+  -s, --source string        Source repository
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Sync local repository from remote parent

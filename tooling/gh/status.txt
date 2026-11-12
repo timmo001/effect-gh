@@ -16,7 +16,7 @@ FLAGS
   -o, --org string        Report status within an organization
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   $ gh status -e cli/cli -e cli/go-gh # Exclude multiple repositories

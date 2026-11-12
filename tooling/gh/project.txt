@@ -31,7 +31,7 @@ AVAILABLE COMMANDS
   view:          View a project
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   $ gh project create --owner monalisa --title "Roadmap"

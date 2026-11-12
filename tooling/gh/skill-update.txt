@@ -31,14 +31,14 @@ USAGE
   gh skill update [<skill>...] [flags]
 
 FLAGS
-  --all          Update all skills without prompting
-  --dir string   Scan a custom directory for installed skills
-  --dry-run      Report available updates without modifying files
-  --force        Re-download even if already up to date
-  --unpin        Clear pinned version and include pinned skills in update
+  --all[=true|false]       Update all skills without prompting
+  --dir string             Scan a custom directory for installed skills
+  --dry-run[=true|false]   Report available updates without modifying files
+  --force[=true|false]     Re-download even if already up to date
+  --unpin[=true|false]     Clear pinned version and include pinned skills in update
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Check and update all skills interactively

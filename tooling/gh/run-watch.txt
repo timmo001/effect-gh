@@ -12,12 +12,12 @@ USAGE
   gh run watch <run-id> [flags]
 
 FLAGS
-      --compact        Show only relevant/failed steps
-      --exit-status    Exit with non-zero status if run fails
-  -i, --interval int   Refresh interval in seconds (default 3)
+      --compact[=true|false]       Show only relevant/failed steps
+      --exit-status[=true|false]   Exit with non-zero status if run fails
+  -i, --interval int               Refresh interval in seconds (default 3)
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

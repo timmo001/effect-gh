@@ -19,7 +19,7 @@ FLAGS
   -u, --user string       The account to switch to
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Select what host and account to switch to via a prompt

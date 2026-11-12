@@ -18,11 +18,11 @@ USAGE
   gh alias set <alias> <expansion> [flags]
 
 FLAGS
-      --clobber   Overwrite existing aliases of the same name
-  -s, --shell     Declare an alias to be passed through a shell interpreter
+      --clobber[=true|false]   Overwrite existing aliases of the same name
+  -s, --shell[=true|false]     Declare an alias to be passed through a shell interpreter
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Note: Command Prompt on Windows requires using double quotes for arguments

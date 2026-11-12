@@ -17,7 +17,7 @@ FLAGS
   -t, --title string             Title for the discussion
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Create interactively

@@ -8,7 +8,7 @@ GENERAL COMMANDS
   list:          List organizations for the authenticated user.
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   $ gh org list

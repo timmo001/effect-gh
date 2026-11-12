@@ -14,7 +14,7 @@ FLAGS
       --url string        URL of the issue or pull request to add to the project
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Add an item to monalisa's project "1"

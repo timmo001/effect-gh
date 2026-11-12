@@ -15,7 +15,7 @@ FLAGS
   -n, --name string          New name of the label
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

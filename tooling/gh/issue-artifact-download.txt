@@ -18,14 +18,14 @@ USAGE
   gh issue artifact download {<issue> [<artifact-number>...] | <artifact-url>...} [flags]
 
 FLAGS
-      --clobber          Overwrite existing files of the same name
-  -D, --dir directory    The directory to download files into (default ".")
-  -O, --output file      The file to write a single artifact to (use "-" to write to standard output)
-      --skip-existing    Skip downloading when files of the same name exist
-      --version number   Download the version with this number from the edit history
+      --clobber[=true|false]         Overwrite existing files of the same name
+  -D, --dir directory                The directory to download files into (default ".")
+  -O, --output file                  The file to write a single artifact to (use "-" to write to standard output)
+      --skip-existing[=true|false]   Skip downloading when files of the same name exist
+      --version number               Download the version with this number from the edit history
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

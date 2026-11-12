@@ -14,7 +14,7 @@ AVAILABLE COMMANDS
   view:          View a gist
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 ARGUMENTS
   A gist can be supplied as argument in either of the following formats:

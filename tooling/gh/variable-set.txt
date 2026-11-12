@@ -20,7 +20,7 @@ FLAGS
   -v, --visibility string    Set visibility for an organization variable: {all|private|selected} (default "private")
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

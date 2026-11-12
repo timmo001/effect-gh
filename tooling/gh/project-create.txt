@@ -14,7 +14,7 @@ FLAGS
       --title string      Title for the project
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Create a new project owned by login monalisa

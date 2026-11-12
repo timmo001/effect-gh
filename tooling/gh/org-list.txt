@@ -11,7 +11,7 @@ FLAGS
   -L, --limit int   Maximum number of organizations to list (default 30)
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # List the first 30 organizations

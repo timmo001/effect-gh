@@ -5,10 +5,10 @@ USAGE
   gh repo autolink delete <id> [flags]
 
 FLAGS
-  --yes   Confirm deletion without prompting
+  --yes[=true|false]   Confirm deletion without prompting
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 LEARN MORE

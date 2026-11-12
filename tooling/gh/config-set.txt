@@ -8,7 +8,7 @@ FLAGS
   -h, --host string   Set per-host setting
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   $ gh config set editor vim

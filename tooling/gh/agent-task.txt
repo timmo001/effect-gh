@@ -15,7 +15,7 @@ AVAILABLE COMMANDS
   view:          View an agent task session (preview)
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 ARGUMENTS
   A task can be identified as argument in any of the following formats:

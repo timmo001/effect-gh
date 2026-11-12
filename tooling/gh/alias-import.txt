@@ -22,10 +22,10 @@ USAGE
   gh alias import [<filename> | -] [flags]
 
 FLAGS
-  --clobber   Overwrite existing aliases of the same name
+  --clobber[=true|false]   Overwrite existing aliases of the same name
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Import aliases from a file

@@ -62,25 +62,25 @@ USAGE
   gh api <endpoint> [flags]
 
 FLAGS
-      --allow-escape-sequences   Allow printing terminal escape sequences
-      --cache duration           Cache the response, e.g. "3600s", "60m", "1h"
-  -F, --field key=value          Add a typed parameter in key=value format (use "@<path>" or "@-" to read value from file or stdin)
-  -H, --header key:value         Add a HTTP request header in key:value format
-      --hostname string          The GitHub hostname for the request (default "github.com")
-  -i, --include                  Include HTTP response status line and headers in the output
-      --input file               The file to use as body for the HTTP request (use "-" to read from standard input)
-  -q, --jq string                Query to select values from the response using jq syntax
-  -X, --method string            The HTTP method for the request (default "GET")
-      --paginate                 Make additional HTTP requests to fetch all pages of results
-  -p, --preview strings          Opt into GitHub API previews (names should omit '-preview')
-  -f, --raw-field key=value      Add a string parameter in key=value format
-      --silent                   Do not print the response body
-      --slurp                    Use with "--paginate" to return an array of all pages of either JSON arrays or objects
-  -t, --template string          Format JSON output using a Go template; see "gh help formatting"
-      --verbose                  Include full HTTP request and response in the output
+      --allow-escape-sequences[=true|false]   Allow printing terminal escape sequences
+      --cache duration                        Cache the response, e.g. "3600s", "60m", "1h"
+  -F, --field key=value                       Add a typed parameter in key=value format (use "@<path>" or "@-" to read value from file or stdin)
+  -H, --header key:value                      Add a HTTP request header in key:value format
+      --hostname string                       The GitHub hostname for the request (default "github.com")
+  -i, --include[=true|false]                  Include HTTP response status line and headers in the output
+      --input file                            The file to use as body for the HTTP request (use "-" to read from standard input)
+  -q, --jq string                             Query to select values from the response using jq syntax
+  -X, --method string                         The HTTP method for the request (default "GET")
+      --paginate[=true|false]                 Make additional HTTP requests to fetch all pages of results
+  -p, --preview strings                       Opt into GitHub API previews (names should omit '-preview')
+  -f, --raw-field key=value                   Add a string parameter in key=value format
+      --silent[=true|false]                   Do not print the response body
+      --slurp[=true|false]                    Use with "--paginate" to return an array of all pages of either JSON arrays or objects
+  -t, --template string                       Format JSON output using a Go template; see "gh help formatting"
+      --verbose[=true|false]                  Include full HTTP request and response in the output
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # List releases in the current repository
@@ -162,10 +162,12 @@ EXAMPLES
 
 ENVIRONMENT VARIABLES
   GH_TOKEN, GITHUB_TOKEN (in order of precedence): an authentication token for
-  `github.com` API requests.
+  API requests to `github.com`, a subdomain of `ghe.com`, or `github.localhost`.
   
   GH_ENTERPRISE_TOKEN, GITHUB_ENTERPRISE_TOKEN (in order of precedence): an
-  authentication token for API requests to GitHub Enterprise.
+  authentication token for API requests to GitHub Enterprise Server. `gh` treats
+  any host other than `github.com`, a subdomain of `ghe.com`, or
+  `github.localhost` as a GitHub Enterprise Server host.
   
   GH_HOST: make the request to a GitHub host other than `github.com`.
 

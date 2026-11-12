@@ -5,10 +5,10 @@ USAGE
   gh ssh-key delete <id> [flags]
 
 FLAGS
-  -y, --yes   Skip the confirmation prompt
+  -y, --yes[=true|false]   Skip the confirmation prompt
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 LEARN MORE
   Use `gh <command> <subcommand> --help` for more information about a command.

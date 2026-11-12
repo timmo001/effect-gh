@@ -11,10 +11,10 @@ USAGE
   gh pr ready [<number> | <url> | <branch>] [flags]
 
 FLAGS
-  --undo   Convert a pull request to "draft"
+  --undo[=true|false]   Convert a pull request to "draft"
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 LEARN MORE

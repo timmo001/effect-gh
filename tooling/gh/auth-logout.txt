@@ -29,7 +29,7 @@ FLAGS
   -u, --user string       The account to log out of
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Select what host and account to log out of via a prompt

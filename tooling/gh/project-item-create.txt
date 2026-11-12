@@ -15,7 +15,7 @@ FLAGS
       --title string      Title for the draft issue
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Create a draft issue in the current user's project "1"

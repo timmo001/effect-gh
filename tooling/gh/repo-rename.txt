@@ -18,10 +18,10 @@ USAGE
 
 FLAGS
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
-  -y, --yes                      Skip the confirmation prompt
+  -y, --yes[=true|false]         Skip the confirmation prompt
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 EXAMPLES
   # Rename the current repository (foo/bar -> foo/baz)

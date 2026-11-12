@@ -15,10 +15,10 @@ USAGE
   gh label clone <source-repository> [flags]
 
 FLAGS
-  -f, --force   Overwrite labels in the destination repository
+  -f, --force[=true|false]   Overwrite labels in the destination repository
 
 INHERITED FLAGS
-      --help                     Show help for command
+      --help[=true|false]        Show help for command
   -R, --repo [HOST/]OWNER/REPO   Select another repository using the [HOST/]OWNER/REPO format
 
 EXAMPLES

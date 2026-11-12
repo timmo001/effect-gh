@@ -27,7 +27,7 @@ TARGETED COMMANDS
   view:          View a repository
 
 INHERITED FLAGS
-  --help   Show help for command
+  --help[=true|false]   Show help for command
 
 ARGUMENTS
   A repository can be supplied as an argument in any of the following formats:
