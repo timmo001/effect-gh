@@ -1,2 +1,6 @@
 node_modules/
 dist/
+.blume/
+.blume-verify/
+.mise/
+.claude/settings.local.json

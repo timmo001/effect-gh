@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://effect-gh.timmo.dev/sitemap-index.xml

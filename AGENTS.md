@@ -13,6 +13,9 @@ Effect v4 SDK for the GitHub CLI. The README documents usage and development.
   hand, record a review by setting `reviewed` in `tooling.yml` and pushing, and add
   new wrapped commands to `scripts/gh-contract.ts`.
 - Use lowercase filenames, with kebab-case for multiword names.
+- `docs/` is the docs-kit site at `effect-gh.timmo.dev`, with its own `bun.lock`.
+  Run it with `mise run docs:dev`; `mise run check` lints and checks it. Keep it in
+  step with the README when the SDK's behaviour changes.
 - Use the shared `@timmo001/oxlint-rules/configs/recommended-effect` preset and
   its supported Oxlint peers.
 

@@ -5,8 +5,10 @@
   },
   "globs": ["**/*.md"],
   "ignores": [
-    "node_modules/**",
+    "**/node_modules/**",
     "dist/**",
+    "docs/.blume/**",
+    "docs/.blume-verify/**",
     ".agents/skills/**",
     ".claude/skills/**",
   ],

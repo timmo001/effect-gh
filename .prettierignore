@@ -4,3 +4,5 @@ bun.lock
 .mise/locks/
 LICENSE
 .agents/skills/
+docs/.blume/
+docs/.blume-verify/

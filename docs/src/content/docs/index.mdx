@@ -1,0 +1,63 @@
+---
+title: Overview
+description: An Effect v4 SDK for the GitHub CLI.
+---
+
+effect-gh wraps the GitHub CLI (`gh`) in Effect v4 services. Each operation runs `gh` without a shell, decodes its output through Schema and fails with a typed error, so you can compose GitHub work with the rest of your Effect program.
+
+```ts
+import { NodeServices } from "@effect/platform-node";
+import { Effect, Layer } from "effect";
+import { Issue, layer } from "@timmo001/effect-gh";
+
+const program = Issue.list({ repo: "owner/repo", state: "open", limit: 10 });
+
+Effect.runPromise(
+  program.pipe(Effect.provide(layer().pipe(Layer.provide(NodeServices.layer)))),
+);
+```
+
+## Get started
+
+<Steps>
+  <Step title="Install">
+    Add the package and the Effect packages it needs. See [Install](/install).
+  </Step>
+  <Step title="Provide the layer">
+    Choose your platform layer and build the `Gh` layer from it. See [Core
+    SDK](/core).
+  </Step>
+  <Step title="Call an operation">
+    Use the typed operations for repositories, issues, pull requests, workflows
+    and more. See [GitHub operations](/github).
+  </Step>
+</Steps>
+
+## Reference
+
+<CardGroup cols={3}>
+  <Card title="Core SDK" href="/core">
+    The `Gh` service, options, errors and cancellation.
+  </Card>
+  <Card title="API requests" href="/api">
+    REST and GraphQL requests, pagination and retries.
+  </Card>
+  <Card title="GitHub operations" href="/github">
+    The typed operations by area.
+  </Card>
+  <Card title="Agents" href="/agents">
+    The agent skill and the OpenCode plugin.
+  </Card>
+  <Card title="Development" href="/development">
+    Checks, tooling drift and releases.
+  </Card>
+</CardGroup>
+
+## Machine-readable docs
+
+| URL                                       | Use                                      |
+| ----------------------------------------- | ---------------------------------------- |
+| https://effect-gh.timmo.dev/llms.txt      | Compact page index                       |
+| https://effect-gh.timmo.dev/llms-full.txt | Full docs bundle                         |
+| https://effect-gh.timmo.dev/mcp           | Hosted MCP (search, page and navigation) |
+| `/{route}.md`                             | One page as Markdown                     |

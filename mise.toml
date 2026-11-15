@@ -3,6 +3,7 @@ min_version = "2025.1.0"
 [tools]
 node = "26.13.1"
 bun = "1.4.4"
+pitchfork = "2.34.0"
 # The linters the shared hk pre-push hook runs, matching CI.
 uv = "0.13.8"
 # yamllint's PyYAML has no wheels for newer Pythons, and mise won't build it from source.
@@ -53,8 +54,74 @@ depends = ["install"]
 run = "bun run format:check"
 
 [tasks.check]
-description = "Lint, type-check, test and verify formatting"
-depends = ["lint", "typecheck", "typecheck:plugin", "test", "format:check"]
+description = "Lint, type-check, test, verify formatting and check the docs site"
+depends = [
+  "lint",
+  "typecheck",
+  "typecheck:plugin",
+  "test",
+  "format:check",
+  "docs:lint",
+  "docs:check",
+]
+
+[tasks."docs:install"]
+description = "Install docs dependencies"
+dir = "docs"
+run = "bun install --frozen-lockfile"
+
+[tasks."docs:lint"]
+description = "Lint the docs site with the shared Oxlint rules"
+depends = ["docs:install"]
+dir = "docs"
+run = "bun run lint"
+
+[tasks."docs:dev"]
+description = "Run the docs dev server"
+depends = ["docs:install"]
+dir = "docs"
+# A reused Vite cache makes every page fail to resolve Astro's ClientRouter script
+run = ["rm -rf .blume/.cache/vite", "bun run dev"]
+
+[tasks."docs:build"]
+description = "Build the docs site"
+depends = ["docs:install"]
+dir = "docs"
+run = "bun run build"
+
+[tasks."docs:preview"]
+description = "Preview the built docs site"
+dir = "docs"
+run = "bun run preview"
+
+[tasks."docs:check"]
+description = "Check the docs site's pages, links and types without disturbing a running dev server"
+depends = ["docs:install"]
+dir = "docs"
+# The tsconfig reads Blume's generated types from .blume/. When it exists a dev
+# server may be using it, so check in --isolated's .blume-verify/ and keep
+# reading those types; in a fresh checkout such as CI, generate .blume/ itself.
+run = "if [ -d .blume ]; then bun run check -- --isolated; else bun run check; fi"
+
+[tasks."serve:docs"]
+description = "Start the docs dev server in the background through Pitchfork"
+run = "pitchfork start docs"
+
+[tasks."serve:docs:status"]
+description = "Show the background docs dev server status"
+run = "pitchfork status docs"
+
+[tasks."serve:docs:logs"]
+description = "Follow the background docs dev server logs"
+run = "pitchfork logs -t docs"
+
+[tasks."serve:docs:restart"]
+description = "Restart the background docs dev server"
+run = "pitchfork restart docs"
+
+[tasks."serve:docs:stop"]
+description = "Stop the background docs dev server"
+run = "pitchfork stop docs"
 
 [tasks.test]
 description = "Run SDK contract tests"
