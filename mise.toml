@@ -30,7 +30,8 @@ run = "bun install --frozen-lockfile --cwd opencode-plugin"
 
 [tasks.lint]
 description = "Lint source with the shared Oxlint rules"
-depends = ["install"]
+# Type-aware lint covers opencode-plugin/, so its dependencies must be installed.
+depends = ["install", "install:plugin"]
 run = "bun run lint"
 
 [tasks.typecheck]
