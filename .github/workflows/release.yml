@@ -34,7 +34,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@13dce11f125107b83ea662167f1091d070dcd359 # 20261114.0
+    uses: timmo001/workflows/.github/workflows/publish-npm-package.yml@fa479eabebf26cc5f655b165c20423fb8fcc0cf4 # 20261115.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       node-version: ${{ needs.tools.outputs.node }}
@@ -46,7 +46,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@13dce11f125107b83ea662167f1091d070dcd359 # 20261114.0
+    uses: timmo001/workflows/.github/workflows/publish-jsr-package.yml@fa479eabebf26cc5f655b165c20423fb8fcc0cf4 # 20261115.0
     with:
       bun-version: ${{ needs.tools.outputs.bun }}
       check-command: bun install --frozen-lockfile --cwd opencode-plugin && bun run --parallel --no-exit-on-error check build
