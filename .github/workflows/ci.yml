@@ -17,17 +17,10 @@ permissions:
 
 jobs:
   check:
-    name: Check and build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Set up mise
-        uses: jdx/mise-action@5ac50f778e26fac95da98d50503682459e86d566
-
-      - name: Check and build
-        run: "mise run check ::: build"
+    uses: timmo001/workflows/.github/workflows/run-mise-task.yml@36ba6651f1296cce685ede8ac38b9574c9291028 # master
+    with:
+      name: Check and build
+      task: "check ::: build"
 
   actionlint:
     uses: timmo001/workflows/.github/workflows/lint-actionlint.yml@5451f6867a5cb2b9b6318a82e00f7dd9f9fc279a # 20261116.0
