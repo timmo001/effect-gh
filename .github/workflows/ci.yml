@@ -21,7 +21,6 @@ jobs:
     with:
       name: Check and build
       task: "check ::: build"
-      install-args: node bun
 
   actionlint:
     uses: timmo001/workflows/.github/workflows/lint-actionlint.yml@db6f3692a31de24d2bee17e505dfd2bf3fd5a076 # 20261116.1
