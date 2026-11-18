@@ -34,6 +34,7 @@ ADDITIONAL COMMANDS
   completion:    Generate shell completion scripts
   config:        Manage configuration for gh
   copilot:       Run the GitHub Copilot CLI (preview)
+  event:         Listen to GitHub events (preview)
   extension:     Manage gh extensions
   gpg-key:       Manage GPG keys
   label:         Manage labels

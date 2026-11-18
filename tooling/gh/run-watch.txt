@@ -7,6 +7,12 @@ show the relevant/failed steps.
 This command does not support authenticating via fine grained PATs
 as it is not currently possible to create a PAT with the `checks:read` permission.
 
+This command polls the run. To wait for the workflow runs of a pull request on `github.com` to
+finish without polling, use `gh event listen` with the
+`com.github.pull_request.check_suite.status.changed.v1` event instead. Each check suite, such as a
+workflow run, sends its own event when it completes. Changes made before the listener starts are not
+reported, so read the checks once it is listening.
+
 
 USAGE
   gh run watch <run-id> [flags]

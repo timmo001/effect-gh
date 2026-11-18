@@ -1,6 +1,10 @@
 $ gh pr --help
 Work with GitHub pull requests.
 
+To wait for a pull request on `github.com` to be reviewed, merged, or closed, use `gh event listen` instead of polling.
+Changes made before the listener starts are not reported, so read the pull request once it is listening.
+
+
 USAGE
   gh pr <command> [flags]
 

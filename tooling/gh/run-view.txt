@@ -12,6 +12,12 @@ Additionally, due to similar platform constraints, some log lines may not be
 associated with a specific step within a job. In these cases, the step name will
 appear as `UNKNOWN STEP` in the log output.
 
+This command shows a snapshot. To wait for the workflow runs of a pull request on `github.com` to
+finish, use `gh event listen` with the
+`com.github.pull_request.check_suite.status.changed.v1` event instead of polling this command. Each
+check suite, such as a workflow run, sends its own event when it completes. Changes made before the listener
+starts are not reported, so read the checks once it is listening.
+
 For more information about output formatting flags, see `gh help formatting`.
 
 USAGE

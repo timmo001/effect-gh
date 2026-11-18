@@ -9,6 +9,10 @@ and reviews. When output is piped or redirected, only comments and reviews are p
 
 With `--web` flag, open the pull request in a web browser instead.
 
+This command shows a snapshot. To wait for a pull request on `github.com` to be reviewed, merged, or closed,
+use `gh event listen` instead of polling.
+Changes made before the listener starts are not reported, so read the pull request once it is listening.
+
 For more information about output formatting flags, see `gh help formatting`.
 
 USAGE
