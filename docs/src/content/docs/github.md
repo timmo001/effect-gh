@@ -19,6 +19,7 @@ Each operation takes an optional `repo` (or `repository`) and core execution opt
 | `Project`, `Codespace`                         | Projects and codespaces                                                  |
 | `Gist`, `SshKey`, `GpgKey`, `DeployKey`, `Org` | Gists, keys and organisations                                            |
 | `Extension`, `Skill`, `AgentTask`, `Cli`       | Extensions, skills, agent tasks and the gh version                       |
+| `Stack`                                        | Stacked pull requests through the gh-stack extension                     |
 
 ```ts
 import { Issue, PullRequest, Repository } from "@timmo001/effect-gh";

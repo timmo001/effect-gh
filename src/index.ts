@@ -93,6 +93,8 @@ export * as Skill from "./skill.js";
 
 export * as SshKey from "./ssh-key.js";
 
+export * as Stack from "./stack.js";
+
 export * as Status from "./status.js";
 
 export * as Template from "./template.js";

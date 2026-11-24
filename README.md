@@ -598,6 +598,66 @@ without access. Assets 404 until they are used in a post. github.com only.
   every skill unless `skills` is given.
 - `Cli.version` returns the installed gh version.
 
+## Stacked pull requests
+
+`Stack` wraps every command of the
+[gh-stack](https://github.com/github/gh-stack) extension, `gh stack`. Install
+it with `Extension.install("github/gh-stack")`. Commands act on the stack of
+the branch checked out in `cwd`.
+
+```ts
+import { Stack } from "@timmo001/effect-gh";
+import { Effect } from "effect";
+
+const options = { cwd: "/path/to/checkout" };
+
+const program = Effect.gen(function* () {
+  yield* Stack.init(["auth"], {}, options);
+  // ...commit...
+  yield* Stack.add(
+    { branch: "api", commit: { message: "Add routes", stage: "all" } },
+    options,
+  );
+  yield* Stack.submit({ open: true }, options);
+
+  const stack = yield* Stack.view(options);
+  const synced = yield* Stack.sync({ prune: true }, options);
+});
+```
+
+- `Stack.view` decodes `gh stack view --json`: the trunk, the current branch
+  and each branch bottom first, with its pull request number, URL and state.
+- `Stack.init` (branches bottom first, with `base`), `add` (a `branch`, a
+  `commit`, or both; `stage` adds `--all` or `--update`), `unstack` (a `stack`
+  number, `local`), `link` (`items` bottom first, onto an existing `stack`) and
+  `alias` cover the stack itself.
+- `Stack.submit` uses generated titles and opens drafts unless `open`.
+  `submit`, `push`, `sync` and `link` take `remote` and `atomic`; `atomic: true`
+  overrides `GH_STACK_NO_ATOMIC`.
+- `Stack.sync` returns `stack`, `branches` (no stack on GitHub to update yet) or
+  `diverged`, which gh-stack reports with a zero exit and no changes.
+  `Stack.parseSync` reads the same from its stderr.
+- `Stack.rebase` takes `branch`, `scope` (`downstack` or `upstack`),
+  `trunk: false`, `remote` and `committerDateIsAuthorDate`; `sync` and `rebase`
+  take `acceptBaseChange`. `continueRebase` and `abortRebase` follow a
+  conflict.
+- `Stack.merge` merges without asking, the whole stack or up to a `target`
+  pull request (or a stack by number), with an optional `method`.
+- `Stack.checkout` takes a stack number, pull request number or URL, or
+  branch. `Stack.navigate` moves `up` or `down` (by `count`), or to the `top`,
+  `bottom` or `trunk`. `checkoutPath` and `navigatePath` return the worktree
+  holding the target branch instead of moving a branch checked out elsewhere.
+- `Stack.modify`, `switchBranch` and `checkout(undefined)` only work on the
+  terminal and run there; `submit` and `merge` take `{ interactive: true }` for
+  gh-stack's editor and wizard. `continueModify` and `abortModify` recover an
+  interrupted `modify`. `Stack.feedback` opens gh-stack's feedback form, and
+  `Stack.version` returns its version.
+- `Stack.exitReason(error)` names a `GhCommandError`'s gh-stack exit code:
+  `not-in-stack`, `conflict`, `api-failure`, `invalid-arguments`,
+  `disambiguation-required`, `rebase-in-progress`, `stack-locked`,
+  `stacks-unavailable` or `modify-recovery-required`, or `undefined` for a
+  generic failure.
+
 ## Projects and codespaces
 
 - `Project.view`, `list` (with `owner`, `limit`, `closed`), `create`, `copy`,
@@ -666,6 +726,14 @@ change here may also need one in the repositories that use the SDK. Record the
 review by setting `reviewed` in [tooling.yml](tooling.yml) and pushing. Add a
 command to the list in that script when the SDK starts wrapping it, and its
 group when the SDK wraps a new one.
+
+The [gh-stack](https://github.com/github/gh-stack) extension is tracked the
+same way: [tooling/gh-stack](tooling/gh-stack) holds the help of every
+`gh stack` command at the reviewed release, plus `source.txt`, the parts of its
+source no help page shows: the `view --json` structure, the exit codes and how
+`sync` reports its end. Run `mise run tooling:refresh:stack <tag>` to refresh
+it from a release. The refresh fails when that source no longer matches, since
+`Stack` may read it wrongly too.
 
 ## Releases
 
