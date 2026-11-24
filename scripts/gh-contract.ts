@@ -1,7 +1,7 @@
 import { NodeServices } from "@effect/platform-node";
 import { Effect, FileSystem, Layer, Match, Path, Schema } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
-import { Gh, Release, layer } from "../src/index.js";
+import { Api, Gh, Release, layer } from "../src/index.js";
 
 /**
  * Snapshot the parts of gh this SDK relies on: the help of every wrapped
@@ -11,6 +11,11 @@ import { Gh, Release, layer } from "../src/index.js";
  * snapshot then shows a changed flag or field, or a new command or subcommand,
  * as a diff under `tooling/gh`. `--release <tag>` downloads that cli/cli
  * release and snapshots its gh; `--gh <executable>` snapshots an installed one.
+ *
+ * `--tool stack` does the same for the gh-stack extension under
+ * `tooling/gh-stack`, from a github/gh-stack release or an installed
+ * `gh-stack` binary. Its `view --json` output and exit codes have no help
+ * page, so it also snapshots their definitions from the source at that tag.
  */
 interface Command {
   readonly name: string;
@@ -271,19 +276,81 @@ const commands: readonly Command[] = [
   { name: "workflow-view", args: ["workflow", "view"] },
 ];
 
+/** Every gh-stack command, all of which the Stack module wraps. */
+const stackCommands: readonly Command[] = [
+  { name: "stack", args: [] },
+  ...[
+    "add",
+    "alias",
+    "bottom",
+    "checkout",
+    "down",
+    "feedback",
+    "init",
+    "link",
+    "merge",
+    "modify",
+    "push",
+    "rebase",
+    "submit",
+    "switch",
+    "sync",
+    "top",
+    "trunk",
+    "unstack",
+    "up",
+    "view",
+  ].map((name) => ({ name: `stack-${name}`, args: [name] })),
+];
+
+/** gh-stack source the Stack module relies on that no help page shows. */
+interface SourcePart {
+  readonly file: string;
+  readonly description: string;
+  readonly pattern: RegExp;
+}
+
+const stackSource: readonly SourcePart[] = [
+  {
+    file: "cmd/view.go",
+    description: "gh stack view --json output, decoded by Stack.View",
+    pattern: /^type viewJSON\w* struct \{[\s\S]*?^\}$/gm,
+  },
+  {
+    file: "cmd/utils.go",
+    description: "Exit codes, read by Stack.exitReason",
+    pattern: /^\s*Err\w+\s*= &ExitError\{Code: \d+\}.*$/gm,
+  },
+  {
+    file: "cmd/sync.go",
+    description: "How sync ends, read by Stack.parseSync",
+    pattern: /^.*cfg\.\w+\("(?:Stack synced|Branches synced)"\).*$/gm,
+  },
+  {
+    file: "cmd/utils.go",
+    description: "How a diverged sync ends, read by Stack.parseSync",
+    pattern: /^.*cfg\.\w+\("Sync aborted[^"]*"\).*$/gm,
+  },
+];
+
+type Tool = "gh" | "stack";
+
 const usage =
-  "Usage: bun scripts/gh-contract.ts [--release <tag> | --gh <executable>] [--output <directory>]";
+  "Usage: bun scripts/gh-contract.ts [--tool gh|stack] [--release <tag> | --gh <executable>] [--output <directory>]";
 
 interface Options {
-  readonly executable: string;
+  readonly tool: Tool;
+  /** gh, or the gh-stack binary with `--tool stack`. */
+  readonly executable: string | undefined;
   readonly release: string | undefined;
   readonly output: string;
 }
 
 const parseOptions = (args: readonly string[]): Options | undefined => {
-  let executable = "gh";
+  let tool: Tool = "gh";
+  let executable: string | undefined;
   let release: string | undefined;
-  let output = "tooling/gh";
+  let output: string | undefined;
 
   for (let index = 0; index < args.length; index += 2) {
     const value = args.at(index + 1);
@@ -291,6 +358,10 @@ const parseOptions = (args: readonly string[]): Options | undefined => {
     if (value === undefined) return undefined;
 
     switch (args[index]) {
+      case "--tool":
+        if (value !== "gh" && value !== "stack") return undefined;
+        tool = value;
+        break;
       case "--gh":
         executable = value;
         break;
@@ -305,7 +376,12 @@ const parseOptions = (args: readonly string[]): Options | undefined => {
     }
   }
 
-  return { executable, release, output };
+  return {
+    tool,
+    executable,
+    release,
+    output: output ?? (tool === "gh" ? "tooling/gh" : "tooling/gh-stack"),
+  };
 };
 
 class ReleaseAssetError extends Schema.TaggedError<ReleaseAssetError>()(
@@ -313,13 +389,11 @@ class ReleaseAssetError extends Schema.TaggedError<ReleaseAssetError>()(
   { message: Schema.String },
 ) {}
 
-/** The gh release asset for this machine, and the path of gh inside it. */
-const releaseAsset = (tag: string) => {
-  const version = tag.replace(/^v/, "");
-
+/** This machine's platform and architecture as Go release assets name them. */
+const target = () => {
   const platform = Match.value(process.platform).pipe(
     Match.when("linux", () => "linux" as const),
-    Match.when("darwin", () => "macOS" as const),
+    Match.when("darwin", () => "darwin" as const),
     Match.orElse(() => undefined),
   );
 
@@ -329,9 +403,19 @@ const releaseAsset = (tag: string) => {
     Match.orElse(() => undefined),
   );
 
-  if (platform === undefined || architecture === undefined) return undefined;
+  return platform === undefined || architecture === undefined
+    ? undefined
+    : { platform, architecture };
+};
 
-  const directory = `gh_${version}_${platform}_${architecture}`;
+/** The gh release asset for this machine, and the path of gh inside it. */
+const ghReleaseAsset = (tag: string) => {
+  const version = tag.replace(/^v/, "");
+  const machine = target();
+
+  if (machine === undefined) return undefined;
+  const platform = machine.platform === "darwin" ? "macOS" : machine.platform;
+  const directory = `gh_${version}_${platform}_${machine.architecture}`;
 
   return {
     asset: `${directory}.${platform === "linux" ? "tar.gz" : "zip"}`,
@@ -339,19 +423,19 @@ const releaseAsset = (tag: string) => {
   };
 };
 
+const noAsset = (tool: string) =>
+  new ReleaseAssetError({
+    message: `No ${tool} release asset for ${process.platform} ${process.arch}`,
+  });
+
 /** Download a cli/cli release into a scoped temporary directory and return its gh. */
-const downloadRelease = Effect.fn("GhContract.downloadRelease")(function* (
-  tag: string,
-) {
+const downloadGh = Effect.fn("GhContract.downloadGh")(function* (tag: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-  const target = releaseAsset(tag);
+  const release = ghReleaseAsset(tag);
 
-  if (target === undefined)
-    return yield* new ReleaseAssetError({
-      message: `No gh release asset for ${process.platform} ${process.arch}`,
-    });
+  if (release === undefined) return yield* noAsset("gh");
 
   const directory = yield* fs.makeTempDirectoryScoped({
     prefix: "gh-contract-",
@@ -360,13 +444,13 @@ const downloadRelease = Effect.fn("GhContract.downloadRelease")(function* (
   yield* Release.download({
     repo: "cli/cli",
     tag,
-    patterns: [target.asset],
+    patterns: [release.asset],
     directory,
   });
 
-  const archive = path.join(directory, target.asset);
+  const archive = path.join(directory, release.asset);
 
-  const extract = target.asset.endsWith(".zip")
+  const extract = release.asset.endsWith(".zip")
     ? ChildProcess.make("unzip", ["-q", archive, "-d", directory])
     : ChildProcess.make("tar", ["-xzf", archive, "-C", directory]);
 
@@ -374,10 +458,42 @@ const downloadRelease = Effect.fn("GhContract.downloadRelease")(function* (
 
   if (Number(code) !== 0)
     return yield* new ReleaseAssetError({
-      message: `Could not extract ${target.asset} (exit code ${code})`,
+      message: `Could not extract ${release.asset} (exit code ${code})`,
     });
 
-  return path.join(directory, target.executable);
+  return path.join(directory, release.executable);
+});
+
+/**
+ * Download a github/gh-stack release's binary for this machine into a scoped
+ * temporary directory and return it. Its assets are bare binaries.
+ */
+const downloadStack = Effect.fn("GhContract.downloadStack")(function* (
+  tag: string,
+) {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const machine = target();
+
+  if (machine === undefined) return yield* noAsset("gh-stack");
+  const asset = `${machine.platform}-${machine.architecture}`;
+
+  const directory = yield* fs.makeTempDirectoryScoped({
+    prefix: "gh-stack-contract-",
+  });
+
+  yield* Release.download({
+    repo: "github/gh-stack",
+    tag,
+    patterns: [asset],
+    directory,
+  });
+
+  const executable = path.join(directory, asset);
+
+  yield* fs.chmod(executable, 0o755);
+
+  return executable;
 });
 
 /** Help exits zero; a bare `--json` lists the fields on stderr and exits one. */
@@ -394,10 +510,19 @@ const capture = Effect.fn("GhContract.capture")(function* (
   );
 });
 
-const section = (args: readonly string[], text: string) =>
-  `$ ${["gh", ...args].join(" ")}\n${text.trimEnd()}\n`;
+/** How each tool's commands are shown: the gh-stack binary prints its help as `gh stack`. */
+const prefixes: Readonly<Record<Tool, readonly string[]>> = {
+  gh: ["gh"],
+  stack: ["gh", "stack"],
+};
 
-const snapshot = Effect.fn("GhContract.snapshot")(function* (command: Command) {
+const section = (tool: Tool, args: readonly string[], text: string) =>
+  `$ ${[...prefixes[tool], ...args].join(" ")}\n${text.trimEnd()}\n`;
+
+const snapshot = Effect.fn("GhContract.snapshot")(function* (
+  tool: Tool,
+  command: Command,
+) {
   const help = yield* capture([...command.args, "--help"]);
 
   const fields = command.json
@@ -405,11 +530,48 @@ const snapshot = Effect.fn("GhContract.snapshot")(function* (command: Command) {
     : undefined;
 
   return [
-    section([...command.args, "--help"], help),
+    section(tool, [...command.args, "--help"], help),
     ...(fields === undefined
       ? []
-      : [section([...command.args, "--json"], fields)]),
+      : [section(tool, [...command.args, "--json"], fields)]),
   ].join("\n");
+});
+
+class SourceError extends Schema.TaggedError<SourceError>()("SourceError", {
+  message: Schema.String,
+}) {}
+
+/**
+ * The parts of gh-stack's source at `ref` listed in {@link stackSource}. A
+ * part that no longer matches fails the refresh, since the Stack module's
+ * reading of it may be wrong too.
+ */
+const stackSourceSnapshot = Effect.fn("GhContract.stackSource")(function* (
+  ref: string,
+) {
+  const sections: Array<string> = [];
+
+  for (const part of stackSource) {
+    const source = yield* Api.text({
+      endpoint: `repos/github/gh-stack/contents/${part.file}`,
+      method: "GET",
+      query: { ref },
+      headers: { Accept: "application/vnd.github.raw+json" },
+    });
+
+    const matches = source.match(part.pattern);
+
+    if (matches === null)
+      return yield* new SourceError({
+        message: `${part.file} at ${ref} no longer has: ${part.description}`,
+      });
+
+    sections.push(
+      `# ${part.file}: ${part.description}\n${[...new Set(matches)].join("\n")}\n`,
+    );
+  }
+
+  return sections.join("\n");
 });
 
 const writeSnapshots = Effect.fn("GhContract.write")(function* (
@@ -418,15 +580,16 @@ const writeSnapshots = Effect.fn("GhContract.write")(function* (
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  const list = options.tool === "gh" ? commands : stackCommands;
 
   yield* fs.makeDirectory(options.output, { recursive: true });
 
-  for (const command of commands) {
+  for (const command of list) {
     const file = path.join(options.output, `${command.name}.txt`);
 
     yield* fs.writeFileString(
       file,
-      yield* snapshot(command).pipe(
+      yield* snapshot(options.tool, command).pipe(
         Effect.provide(
           ghLayer(executable).pipe(Layer.provide(NodeServices.layer)),
         ),
@@ -435,8 +598,26 @@ const writeSnapshots = Effect.fn("GhContract.write")(function* (
   }
 
   yield* Effect.log(
-    `Wrote ${commands.length} gh contract snapshots to ${options.output}`,
+    `Wrote ${list.length} ${options.tool} contract snapshots to ${options.output}`,
   );
+});
+
+/** gh-stack's version, as the tag its source is read at. */
+const stackTag = Effect.fn("GhContract.stackTag")(function* (
+  executable: string,
+) {
+  const output = yield* capture(["--version"]).pipe(
+    Effect.provide(ghLayer(executable).pipe(Layer.provide(NodeServices.layer))),
+  );
+
+  const version = /version\s+(\S+)/.exec(output)?.[1];
+
+  if (version === undefined)
+    return yield* new SourceError({
+      message: `Could not read the gh-stack version from: ${output.trim()}`,
+    });
+
+  return `v${version.replace(/^v/, "")}`;
 });
 
 const options = parseOptions(process.argv.slice(2));
@@ -456,6 +637,7 @@ const ghLayer = (executable: string) =>
       // gh --help lists installed extensions, which live in the data directory.
       XDG_DATA_HOME: `${process.env.TMPDIR ?? "/tmp"}/gh-contract-data`,
       GH_NO_UPDATE_NOTIFIER: "1",
+      GH_STACK_NO_UPDATE_NOTIFIER: "1",
       GH_PROMPT_DISABLED: "1",
       GH_PAGER: "cat",
       NO_COLOR: "1",
@@ -463,16 +645,35 @@ const ghLayer = (executable: string) =>
     },
   });
 
+// Downloads and source reads run through the installed, authenticated gh.
+const installedGh = layer().pipe(Layer.provide(NodeServices.layer));
+
 const program = Effect.gen(function* () {
+  if (options.tool === "gh") {
+    const executable =
+      options.release === undefined
+        ? (options.executable ?? "gh")
+        : yield* downloadGh(options.release).pipe(Effect.provide(installedGh));
+
+    return yield* writeSnapshots(options, executable);
+  }
+
   const executable =
     options.release === undefined
-      ? options.executable
-      : yield* downloadRelease(options.release).pipe(
-          // The download runs through the installed, authenticated gh.
-          Effect.provide(layer().pipe(Layer.provide(NodeServices.layer))),
-        );
+      ? (options.executable ?? "gh-stack")
+      : yield* downloadStack(options.release).pipe(Effect.provide(installedGh));
+
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const tag = options.release ?? (yield* stackTag(executable));
+
+  // Read first, so source that no longer matches leaves the snapshot alone.
+  const source = yield* stackSourceSnapshot(tag).pipe(
+    Effect.provide(installedGh),
+  );
 
   yield* writeSnapshots(options, executable);
+  yield* fs.writeFileString(path.join(options.output, "source.txt"), source);
 });
 
 await Effect.runPromise(

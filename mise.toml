@@ -157,3 +157,9 @@ description = "Regenerate the gh contract snapshot under tooling/gh from a cli/c
 depends = ["install"]
 usage = 'arg "<tag>" help="Release tag, e.g. v2.102.0"'
 run = "bun scripts/gh-contract.ts --release $usage_tag"
+
+[tasks."tooling:refresh:stack"]
+description = "Regenerate the gh-stack contract snapshot under tooling/gh-stack from a github/gh-stack release"
+depends = ["install"]
+usage = 'arg "<tag>" help="Release tag, e.g. v0.3.0"'
+run = "bun scripts/gh-contract.ts --tool stack --release $usage_tag"

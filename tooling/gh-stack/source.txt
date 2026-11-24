@@ -1,0 +1,39 @@
+# cmd/view.go: gh stack view --json output, decoded by Stack.View
+type viewJSONOutput struct {
+	Trunk         string           `json:"trunk"`
+	CurrentBranch string           `json:"currentBranch"`
+	Branches      []viewJSONBranch `json:"branches"`
+}
+type viewJSONBranch struct {
+	Name        string      `json:"name"`
+	Head        string      `json:"head,omitempty"`
+	Base        string      `json:"base,omitempty"`
+	IsCurrent   bool        `json:"isCurrent"`
+	IsMerged    bool        `json:"isMerged"`
+	IsQueued    bool        `json:"isQueued"`
+	NeedsRebase bool        `json:"needsRebase"`
+	PR          *viewJSONPR `json:"pr,omitempty"`
+}
+type viewJSONPR struct {
+	Number int    `json:"number"`
+	URL    string `json:"url,omitempty"`
+	State  string `json:"state"`
+}
+
+# cmd/utils.go: Exit codes, read by Stack.exitReason
+	ErrNotInStack        = &ExitError{Code: 2}  // branch/stack not found
+	ErrConflict          = &ExitError{Code: 3}  // rebase conflict
+	ErrAPIFailure        = &ExitError{Code: 4}  // GitHub API error
+	ErrInvalidArgs       = &ExitError{Code: 5}  // invalid arguments or flags
+	ErrDisambiguate      = &ExitError{Code: 6}  // multiple stacks/remotes, can't auto-select
+	ErrRebaseActive      = &ExitError{Code: 7}  // rebase already in progress
+	ErrLockFailed        = &ExitError{Code: 8}  // could not acquire stack file lock
+	ErrStacksUnavailable = &ExitError{Code: 9}  // stacked PRs not available for this repository
+	ErrModifyRecovery    = &ExitError{Code: 10} // modify session interrupted, recovery required
+
+# cmd/sync.go: How sync ends, read by Stack.parseSync
+		cfg.Successf("Stack synced")
+		cfg.Successf("Branches synced")
+
+# cmd/utils.go: How a diverged sync ends, read by Stack.parseSync
+		cfg.Infof("Sync aborted — no changes were made")

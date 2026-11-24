@@ -11,7 +11,9 @@ Effect v4 SDK for the GitHub CLI. The README documents usage and development.
   Upkeep's [`drift` job](https://upkeep.timmo.dev/running#drift) checks for new
   releases. Regenerate the snapshot with `mise run tooling:refresh <tag>`, never by
   hand, record a review by setting `reviewed` in `tooling.yml` and pushing, and add
-  new wrapped commands to `scripts/gh-contract.ts`.
+  new wrapped commands to `scripts/gh-contract.ts`. The gh-stack extension behind
+  `src/stack.ts` is tracked the same way in `tooling/gh-stack`, refreshed with
+  `mise run tooling:refresh:stack <tag>`.
 - Use lowercase filenames, with kebab-case for multiword names.
 - `docs/` is the docs-kit site at `effect-gh.timmo.dev`, with its own `bun.lock`.
   Run it with `mise run docs:dev`; `mise run check` lints and checks it. Keep it in
