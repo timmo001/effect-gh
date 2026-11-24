@@ -36,6 +36,7 @@ import {
   Secret,
   Skill,
   SshKey,
+  Stack,
   Status,
   Template,
   Variable,
@@ -46,6 +47,7 @@ import {
   Effect,
   FileSystem,
   Layer,
+  Match,
   Option,
   Predicate,
   Schema,
@@ -706,9 +708,377 @@ const ReleaseSettings = {
   prerelease: Schema.optionalKey(Schema.Boolean),
 };
 
+const stackDirectory = Schema.optionalKey(
+  Schema.String.check(Schema.isStartingWith("/")),
+).annotate({
+  description:
+    "The absolute path of the checkout to work in; the session directory without it",
+});
+
+const stackRemote = Schema.optionalKey(Schema.String).annotate({
+  description:
+    "The remote to push to; needed when there are several and remote.pushDefault isn't set",
+});
+
+const stackAtomic = Schema.optionalKey(Schema.Boolean).annotate({
+  description:
+    "Push every branch or none (gh-stack's default); false allows partial updates",
+});
+
+const acceptBaseChange = Schema.optionalKey(Schema.Boolean).annotate({
+  description:
+    "Rebase onto a base GitHub retargeted even when the old base never merged, dropping its commits",
+});
+
+/** What every stack tool's input has: the checkout to work in. */
+interface StackInput {
+  readonly directory?: string | undefined;
+}
+
+/** Name gh-stack's exit code in the error, so the agent knows how to recover. */
+const withStackReason = <A, E>(effect: Effect.Effect<A, E, Gh>) =>
+  effect.pipe(
+    Effect.mapError((cause) => {
+      if (!(cause instanceof GhCommandError)) return cause;
+      const reason = Stack.exitReason(cause);
+
+      return reason === undefined
+        ? cause
+        : new Tool.Error({
+            message: `gh stack failed: ${reason}\n${tailLines([cause.stderr, cause.stdout].filter(Boolean).join("\n"))}`,
+            error: cause,
+          });
+    }),
+  );
+
+/**
+ * A gh-stack tool, run in `directory` or the session directory. Permissions
+ * name the checkout, since these act on its branches.
+ */
+const stackTool = <
+  S extends Schema.Struct<InputFields> & { readonly Type: StackInput },
+  A,
+  E,
+>(tool: {
+  readonly name: string;
+  readonly description: string;
+  readonly access: ToolAccess;
+  readonly timeout?: Duration.Input;
+  readonly input: S;
+  readonly resource?: (input: S["Type"]) => string | undefined;
+  readonly run: (
+    input: S["Type"],
+    options: { readonly cwd: string },
+  ) => Effect.Effect<A, E, Gh>;
+}) =>
+  ghTool({
+    name: tool.name,
+    description: tool.description,
+    access: tool.access,
+    timeout: tool.timeout ?? "10 minutes",
+    repo: "none",
+    input: tool.input,
+    resource: (input) =>
+      [input.directory ?? "session", tool.resource?.(input)]
+        .filter(Predicate.isString)
+        .join(" "),
+    run: (input, call) =>
+      withStackReason(tool.run(input, { cwd: input.directory ?? call.cwd })),
+  });
+
+/**
+ * The gh-stack extension's commands that work without a terminal. `modify`,
+ * `switch`, `alias` and `feedback` need a terminal or a browser.
+ */
+const stackTools: readonly ClientTool[] = [
+  stackTool({
+    name: "stack_view",
+    description:
+      "The checked-out branch's stack (gh stack view): the trunk, the current branch and each branch bottom first, with whether it's merged, queued or needs a rebase, and its pull request. Fails with not-in-stack outside one. Needs the github/gh-stack extension.",
+    access: "read",
+    timeout: "2 minutes",
+    input: Schema.Struct({ directory: stackDirectory }),
+    run: (_input, options) => Stack.view(options),
+  }),
+  stackTool({
+    name: "stack_init",
+    description:
+      "Start a stack from branches, bottom first, and check out the top one. Existing branches are adopted, missing ones created on the one before.",
+    access: "write",
+    timeout: "2 minutes",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      branches: Schema.NonEmptyArray(Schema.String),
+      base: Schema.optionalKey(Schema.String).annotate({
+        description: "The trunk branch; the repository's default without it",
+      }),
+    }),
+    run: (input, options) =>
+      Stack.init(
+        input.branches,
+        input.base === undefined ? {} : { base: input.base },
+        options,
+      ),
+  }),
+  stackTool({
+    name: "stack_add",
+    description:
+      "Add a branch on top of the stack and check it out, optionally committing to it. Give a branch, a message, or both; without a branch its name comes from the message.",
+    access: "write",
+    timeout: "2 minutes",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      branch: Schema.optionalKey(Schema.String),
+      message: Schema.optionalKey(Schema.String).annotate({
+        description: "Commit with this message on the new branch",
+      }),
+      stage: Schema.optionalKey(Schema.Literals(["all", "tracked"])).annotate({
+        description:
+          "Stage all changes, untracked files included, or only tracked files before committing; needs message",
+      }),
+    }),
+    run: (input, options) =>
+      Effect.gen(function* () {
+        const commit =
+          input.message === undefined
+            ? undefined
+            : input.stage === undefined
+              ? { message: input.message }
+              : { message: input.message, stage: input.stage };
+
+        if (input.stage !== undefined && commit === undefined)
+          return yield* new Tool.Error({ message: "stage needs a message" });
+
+        if (input.branch !== undefined)
+          return yield* Stack.add(
+            commit === undefined
+              ? { branch: input.branch }
+              : { branch: input.branch, commit },
+            options,
+          );
+
+        if (commit === undefined)
+          return yield* new Tool.Error({
+            message: "Pass a branch, a message, or both",
+          });
+
+        return yield* Stack.add({ commit }, options);
+      }),
+  }),
+  stackTool({
+    name: "stack_checkout",
+    description:
+      "Check out a stack by stack number, pull request number or URL, or branch, fetching it from GitHub when it isn't tracked locally, and return the worktree holding the target branch. A branch checked out in another worktree stays there.",
+    access: "write",
+    timeout: "5 minutes",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      target: Schema.Union([Schema.Int, Schema.String]).annotate({
+        description:
+          "A stack number (tried first), a pull request number or URL, or a branch",
+      }),
+    }),
+    resource: (input) => String(input.target),
+    run: (input, options) =>
+      Stack.checkoutPath(input.target, options).pipe(
+        Effect.map((path) => ({ path })),
+      ),
+  }),
+  stackTool({
+    name: "stack_navigate",
+    description:
+      "Check out another branch of the stack: up (away from the trunk) or down by count, or the top, bottom or trunk. Merged branches are skipped. Returns the worktree holding the target branch, without switching one checked out elsewhere.",
+    access: "write",
+    timeout: "2 minutes",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      to: Schema.Literals(["up", "down", "top", "bottom", "trunk"]),
+      count: Schema.optionalKey(Schema.Int).annotate({
+        description: "Branches to move, for up and down; 1 by default",
+      }),
+    }),
+    run: (input, options) =>
+      Stack.navigatePath(
+        input.to === "up" || input.to === "down"
+          ? input.count === undefined
+            ? { to: input.to }
+            : { to: input.to, count: input.count }
+          : { to: input.to },
+        options,
+      ).pipe(Effect.map((path) => ({ path }))),
+  }),
+  stackTool({
+    name: "stack_submit",
+    description:
+      "Push every branch of the stack, open a pull request with a generated title for each branch without one, fix their bases and create or update the stack on GitHub. New pull requests are drafts unless open.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      open: Schema.optionalKey(Schema.Boolean).annotate({
+        description: "Mark new and existing pull requests ready for review",
+      }),
+      remote: stackRemote,
+      atomic: stackAtomic,
+    }),
+    run: (input, options) => Stack.submit(input, options),
+  }),
+  stackTool({
+    name: "stack_push",
+    description:
+      "Push the stack's active branches with --force-with-lease, skipping merged and queued ones.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      remote: stackRemote,
+      atomic: stackAtomic,
+    }),
+    run: (input, options) => Stack.push(input, options),
+  }),
+  stackTool({
+    name: "stack_sync",
+    description:
+      "Fetch, pull in branches added on GitHub, fast-forward the trunk, rebase every branch onto its parent, push and link the stack on GitHub. Returns stack, branches (no stack on GitHub to update yet) or diverged (the local and GitHub stacks differ; nothing changed, check it out from GitHub with stack_checkout). A conflict restores every branch; run stack_rebase to resolve it.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      prune: Schema.optionalKey(Schema.Boolean).annotate({
+        description: "Delete local branches of merged pull requests",
+      }),
+      acceptBaseChange,
+      remote: stackRemote,
+      atomic: stackAtomic,
+    }),
+    run: (input, options) =>
+      Stack.sync(input, options).pipe(Effect.map((result) => ({ result }))),
+  }),
+  stackTool({
+    name: "stack_rebase",
+    description:
+      "Pull the trunk and rebase each branch of the stack onto the one below it. A conflict fails with conflict and pauses: resolve and stage the files, then call again with action continue, or abort.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      action: Schema.optionalKey(
+        Schema.Literals(["continue", "abort"]),
+      ).annotate({
+        description:
+          "Continue or abort a paused rebase instead; the other options don't apply",
+      }),
+      branch: Schema.optionalKey(Schema.String).annotate({
+        description:
+          "The branch to rebase around; the checked-out one without it",
+      }),
+      scope: Schema.optionalKey(
+        Schema.Literals(["downstack", "upstack"]),
+      ).annotate({
+        description:
+          "Only rebase from the trunk up to the branch, or from it to the top",
+      }),
+      trunk: Schema.optionalKey(Schema.Boolean).annotate({
+        description:
+          "false skips fetching and rebasing onto the trunk, only rebasing branches onto each other",
+      }),
+      remote: Schema.optionalKey(Schema.String).annotate({
+        description: "The remote to fetch from",
+      }),
+      acceptBaseChange,
+    }),
+    resource: (input) => input.action,
+    run: (input, options) =>
+      Match.value(input.action).pipe(
+        Match.when("continue", () => Stack.continueRebase(options)),
+        Match.when("abort", () => Stack.abortRebase(options)),
+        Match.orElse(() => Stack.rebase(input, options)),
+      ),
+  }),
+  stackTool({
+    name: "stack_modify_recover",
+    description:
+      "Continue or abort a gh stack modify that was interrupted (exit reason modify-recovery-required). modify itself only runs in a terminal.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      action: Schema.Literals(["continue", "abort"]),
+    }),
+    resource: (input) => input.action,
+    run: (input, options) =>
+      input.action === "continue"
+        ? Stack.continueModify(options)
+        : Stack.abortModify(options),
+  }),
+  stackTool({
+    name: "stack_link",
+    description:
+      "Create or grow a stack on GitHub from branches, pull request numbers or URLs, bottom first, without tracking it locally. Branches are pushed and get pull requests when they have none. Pull requests already in the stack are never removed.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      items: Schema.Array(Schema.Union([Schema.Int, Schema.String])).annotate({
+        description:
+          "Branches, pull request numbers or URLs, bottom first. At least two, or one with stack",
+      }),
+      stack: Schema.optionalKey(Schema.Int).annotate({
+        description: "Add items to the top of this stack on GitHub",
+      }),
+      base: Schema.optionalKey(Schema.String).annotate({
+        description:
+          "The bottom pull request's base; the repository's default branch without it",
+      }),
+      open: Schema.optionalKey(Schema.Boolean).annotate({
+        description: "Mark new and existing pull requests ready for review",
+      }),
+      remote: stackRemote,
+      atomic: stackAtomic,
+    }),
+    run: (input, options) => Stack.link(input, options),
+  }),
+  stackTool({
+    name: "stack_unstack",
+    description:
+      "Unstack a stack's pull requests on GitHub and stop tracking it locally, or with local only stop tracking it. Merged and queued pull requests stay stacked.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      stack: Schema.optionalKey(Schema.Int).annotate({
+        description:
+          "The stack number on GitHub; the checked-out branch's stack without it",
+      }),
+      local: Schema.optionalKey(Schema.Boolean).annotate({
+        description: "Only stop tracking it locally, keeping it on GitHub",
+      }),
+    }),
+    resource: (input) =>
+      input.stack === undefined ? undefined : String(input.stack),
+    run: (input, options) => Stack.unstack(input, options),
+  }),
+  stackTool({
+    name: "stack_merge",
+    description:
+      "Merge a stack's pull requests all at once, without asking: the checked-out branch's whole stack, a stack by number, or a pull request and every unmerged one below it. If any can't merge, none do. A merge queue on the base queues it instead.",
+    access: "write",
+    input: Schema.Struct({
+      directory: stackDirectory,
+      target: Schema.optionalKey(Schema.Int).annotate({
+        description:
+          "A stack number (tried first), or a pull request number to merge up to",
+      }),
+      method: Schema.optionalKey(
+        Schema.Literals(["merge", "squash", "rebase"]),
+      ).annotate({
+        description: "gh-stack reuses the last method without it",
+      }),
+    }),
+    resource: (input) =>
+      [input.target, input.method]
+        .filter((part) => part !== undefined)
+        .join(" ") || undefined,
+    run: (input, options) => Stack.merge(input, options),
+  }),
+];
+
 /** The namespace's description in the Code Mode catalogue. */
 export const description =
-  "GitHub through the gh CLI: repositories (create, edit, fork, delete, read files), pull requests and their reviews, review threads and comments, issues, discussions, labels, releases, Actions runs, secrets, variables and caches, and search. Read-only tools cover projects, codespaces, gists, SSH, GPG and deploy keys, rulesets, autolinks, agent tasks, skills, gh's config and aliases, organisations, your status and gitignore and licence templates. `repo` defaults to the session directory's repository. Text writes take `attachments` ([{ path, alt }]), uploaded and swapped in for their local paths, including in reviews, inline review comments and discussions. Prefer the typed tools; `api` (REST) and `graphql` are the escape hatches, and run without asking for GET and HEAD requests and query-only documents. To wait for an Actions run outside a pull request, start `gh.run_watch` ({ repo, runId }) with jobs.start; use dot.pr_watch for pull requests.";
+  "GitHub through the gh CLI: repositories (create, edit, fork, delete, read files), pull requests and their reviews, review threads and comments, stacked pull requests through the gh-stack extension (stack_*), issues, discussions, labels, releases, Actions runs, secrets, variables and caches, and search. Read-only tools cover projects, codespaces, gists, SSH, GPG and deploy keys, rulesets, autolinks, agent tasks, skills, gh's config and aliases, organisations, your status and gitignore and licence templates. `repo` defaults to the session directory's repository. Text writes take `attachments` ([{ path, alt }]), uploaded and swapped in for their local paths, including in reviews, inline review comments and discussions. Prefer the typed tools; `api` (REST) and `graphql` are the escape hatches, and run without asking for GET and HEAD requests and query-only documents. To wait for an Actions run outside a pull request, start `gh.run_watch` ({ repo, runId }) with jobs.start; use dot.pr_watch for pull requests.";
 
 /** GitHub through the effect-gh SDK, run in the session directory. */
 export const tools: readonly ClientTool[] = [
@@ -3162,4 +3532,5 @@ export const tools: readonly ClientTool[] = [
     input: Schema.Struct({ license: Schema.String }),
     run: (input, call) => Template.licenseView(input, { cwd: call.cwd }),
   }),
+  ...stackTools,
 ];
