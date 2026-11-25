@@ -50,6 +50,7 @@ import {
   Match,
   Option,
   Predicate,
+  Schedule,
   Schema,
   SchemaAST,
   Struct,
@@ -365,6 +366,145 @@ const repositorySummary = (response: typeof RepositoryResponse.Type) => ({
   url: response.html_url,
   private: response.private,
   defaultBranch: response.default_branch,
+});
+
+/** A pull request's place in a stack; position 1 is the bottom, based on the stack's base. */
+const PullStack = Schema.Struct({ id: Schema.Int, position: Schema.Int });
+
+/** The REST fields of a pull request that place it in a stack. */
+const StackedPull = Schema.Struct({
+  number: Schema.Int,
+  title: Schema.String,
+  html_url: Schema.String,
+  stack: Schema.optionalKey(Schema.NullOr(PullStack)),
+});
+
+/** An asynchronous merge request; `details` carries the uuid while pending and the commit once merged. */
+const MergeAsync = Schema.Struct({
+  status: Schema.Literals(["pending", "merged", "enqueued", "failed"]),
+  details: Schema.Struct({
+    message: Schema.optionalKey(Schema.String),
+    uuid: Schema.optionalKey(Schema.String),
+    sha: Schema.optionalKey(Schema.String),
+  }),
+});
+
+/**
+ * Merge a stacked pull request through the asynchronous merge API, the only
+ * way GitHub merges one. It merges every open pull request below it too, so
+ * those must be opted into. Polls for up to a minute, then reports the result
+ * or the uuid of the request still pending.
+ */
+const mergeStacked = Effect.fn("gh.mergeStacked")(function* (
+  input: {
+    readonly number: number;
+    readonly method: "squash" | "merge" | "rebase";
+    readonly headSha: string;
+    readonly auto?: boolean;
+    readonly includeDownstack?: boolean;
+  },
+  call: GhCall,
+  stack: typeof PullStack.Type,
+) {
+  const options = { cwd: call.cwd };
+  const target = restTarget(call.repo);
+
+  if (input.auto)
+    return yield* Effect.fail(
+      new Tool.Error({
+        message: `#${input.number} is stacked, and stacked pull requests can't auto-merge. Merge it once it's ready, or use stack_merge.`,
+      }),
+    );
+
+  const downstack = (yield* Api.pages(
+    {
+      endpoint: `repos/${target.path}/pulls`,
+      method: "GET",
+      query: { state: "open", per_page: 100 },
+      options,
+      ...(target.hostname !== undefined && { hostname: target.hostname }),
+    },
+    Schema.Array(StackedPull),
+  ))
+    .flat()
+    .filter(
+      (pull) =>
+        pull.stack?.id === stack.id && pull.stack.position < stack.position,
+    )
+    .map((pull) => ({
+      number: pull.number,
+      title: pull.title,
+      url: pull.html_url,
+    }));
+
+  if (downstack.length > 0 && !input.includeDownstack)
+    return yield* Effect.fail(
+      new Tool.Error({
+        message: `Merging #${input.number} also merges the open pull requests below it in its stack: ${downstack
+          .map((pull) => `#${pull.number} ${pull.title}`)
+          .join(
+            ", ",
+          )}. Pass includeDownstack once they're reviewed, or merge them first.`,
+      }),
+    );
+
+  const status = (uuid: string) =>
+    Api.json(
+      repoRequest(call.repo, `/pulls/${input.number}/merge-async/${uuid}`, {
+        method: "GET",
+        options,
+      }),
+      MergeAsync,
+    );
+
+  // A 409 means a merge is already pending for it; gh still prints the body.
+  const requested = yield* Api.json(
+    repoRequest(call.repo, `/pulls/${input.number}/merge-async`, {
+      method: "PUT",
+      body: {
+        sha: input.headSha,
+        merge_method: input.method,
+        merge_action: "default",
+      },
+      options,
+    }),
+    MergeAsync,
+  ).pipe(
+    Effect.catchTag("GhCommandError", (error) =>
+      Schema.decodeUnknownEffect(Schema.fromJsonString(MergeAsync))(
+        error.stdout,
+      ).pipe(
+        Effect.map((result) => ({ ...result, alreadyPending: true })),
+        Effect.catch(() => Effect.fail(error)),
+      ),
+    ),
+  );
+
+  const { uuid } = requested.details;
+
+  const result =
+    requested.status !== "pending" || uuid === undefined
+      ? requested
+      : yield* status(uuid).pipe(
+          Effect.repeat({
+            schedule: Schedule.spaced("2 seconds"),
+            until: (current) => current.status !== "pending",
+            times: 29,
+          }),
+        );
+
+  return {
+    status: result.status,
+    ...(result.details.message !== undefined && {
+      message: result.details.message,
+    }),
+    ...(result.details.sha !== undefined && { sha: result.details.sha }),
+    ...(result.status === "pending" && { uuid }),
+    ...("alreadyPending" in requested && {
+      note: "A merge was already pending for this pull request, so this reports that one.",
+    }),
+    downstack,
+  };
 });
 
 const flag = (name: string, value: string | undefined) =>
@@ -2157,7 +2297,7 @@ export const tools: readonly ClientTool[] = [
   ghTool({
     name: "pr_merge",
     description:
-      "Merge a pull request pinned to the head commit you reviewed, or turn on auto-merge with auto, then return its state.",
+      "Merge a pull request pinned to the head commit you reviewed, or turn on auto-merge with auto, then return its state. A stacked pull request merges through GitHub's asynchronous merge, together with every open pull request below it, so it needs includeDownstack when any are open; it returns merged with the commit, enqueued, or still pending with the request's uuid.",
     access: "write",
     input: Schema.Struct({
       repo,
@@ -2165,12 +2305,28 @@ export const tools: readonly ClientTool[] = [
       method: Schema.Literals(["squash", "merge", "rebase"]),
       headSha,
       auto: Schema.optionalKey(Schema.Boolean).annotate({
-        description: "Merge once its requirements are met instead of now",
+        description:
+          "Merge once its requirements are met instead of now. Not for stacked pull requests",
+      }),
+      includeDownstack: Schema.optionalKey(Schema.Boolean).annotate({
+        description:
+          "For a stacked pull request, also merge the open pull requests below it, which GitHub merges with it",
       }),
     }),
-    resource: (input, repo) => `${repo} ${input.method}`,
+    resource: (input, repo) =>
+      `${repo} ${input.method}${input.includeDownstack ? " downstack" : ""}`,
     run: (input, call) =>
       Effect.gen(function* () {
+        const pull = yield* Api.json(
+          repoRequest(call.repo, `/pulls/${input.number}`, {
+            method: "GET",
+            options: { cwd: call.cwd },
+          }),
+          StackedPull,
+        );
+
+        if (pull.stack) return yield* mergeStacked(input, call, pull.stack);
+
         yield* withGh((gh) =>
           gh.execute(
             [
