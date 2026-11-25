@@ -11,7 +11,7 @@
     "@effect/platform-node": "4.1.0",
     "@opencode/plugin": "2.4.1",
     "@opencode/schema": "2.4.1",
-    "@timmo001/effect-gh": "0.14.0",
+    "@timmo001/effect-gh": "0.14.1",
     "effect": "4.1.0"
   },
   "devDependencies": {
