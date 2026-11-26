@@ -12,6 +12,13 @@ Pinned skills (installed with `--pin`) are skipped with a notice.
 Use `--unpin` to clear the pinned version and include those skills
 in the update.
 
+A skill is only updated from the repository it was installed from. If
+its owner and name now belong to a different repository, for example
+after the original owner was renamed and someone else took the old name,
+the skill is not updated. Reinstall it to use the new repository.
+Skills installed by an earlier version of GitHub CLI have no recorded
+repository, so they are updated with a warning.
+
 Skills without GitHub metadata (e.g. installed manually or by another
 tool) are prompted for their source repository in interactive mode.
 With `--all` or in non-interactive mode, they are skipped with a notice.
