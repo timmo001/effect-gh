@@ -545,8 +545,9 @@ without access. Assets 404 until they are used in a post. github.com only.
   for fine-grained tokens.
   `Auth.login({ token })` logs in with `--with-token`, sending the token on
   stdin. `Auth.logout`, `Auth.setupGit` and `Auth.switchAccount` take
-  `hostname` and `user`. `Auth.refresh` adds, removes or resets scopes and runs
-  on the terminal.
+  `hostname` and `user`. From gh 2.106.0 `Auth.logout` also revokes the GitHub
+  CLI token; pass `noRevoke` to only remove it locally. `Auth.refresh` adds,
+  removes or resets scopes and runs on the terminal.
 - `Config.get`, `Config.set` (both with `host`), `Config.list` (parsed into
   `key` and `value`) and `Config.clearCache` cover gh's settings.
 - `Alias.list` returns gh's YAML text. `Alias.set` sends the expansion on

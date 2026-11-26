@@ -53,10 +53,12 @@ test("logout, setupGit and switchAccount pass host and user as flags", async () 
   const gh = scriptedSpawner([]);
 
   await gh.run(Auth.logout({ hostname: "github.com", user: "octocat" }));
+  await gh.run(Auth.logout({ noRevoke: true }));
   await gh.run(Auth.setupGit({ hostname: "github.example", force: true }));
   await gh.run(Auth.switchAccount({ user: "octocat" }));
   expect(gh.args()).toEqual([
     ["auth", "logout", "--hostname", "github.com", "--user", "octocat"],
+    ["auth", "logout", "--no-revoke"],
     ["auth", "setup-git", "--hostname", "github.example", "--force"],
     ["auth", "switch", "--user", "octocat"],
   ]);

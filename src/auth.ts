@@ -95,15 +95,26 @@ export const login = Effect.fn("Auth.login")(function* (
   yield* gh.execute(args, { ...options, stdin: input.token });
 });
 
-/** Remove the stored credentials of an account. The token is not revoked. */
+/**
+ * Remove the stored credentials of an account. From gh 2.106.0 this also
+ * revokes a GitHub CLI OAuth token, and fails and keeps the credentials when
+ * revocation fails; older gh only removes them locally. `noRevoke` (gh 2.106.0
+ * or later) removes them locally without revoking.
+ */
 export const logout = Effect.fn("Auth.logout")(function* (
-  input: { readonly hostname?: string; readonly user?: string },
+  input: {
+    readonly hostname?: string;
+    readonly user?: string;
+    readonly noRevoke?: boolean;
+  },
   options?: GhOptions,
 ) {
   const gh = yield* Gh;
   const args = ["auth", "logout", ...hostArgs(input.hostname)];
 
   if (input.user !== undefined) args.push("--user", input.user);
+
+  if (input.noRevoke) args.push("--no-revoke");
   yield* gh.execute(args, options);
 });
 
