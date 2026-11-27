@@ -33,7 +33,7 @@
     "astro": "7.4.13",
     "effect": "4.1.7",
     "oxlint": "1.95.0",
-    "oxlint-tsgolint": "7.0.2008",
+    "oxlint-tsgolint": "7.0.2009",
     "wrangler": "4.168.0"
   },
   "trustedDependencies": [
